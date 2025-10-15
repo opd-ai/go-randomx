@@ -25,7 +25,7 @@ go get github.com/opd-ai/go-randomx
 ```
 
 **Requirements:**
-- Go 1.19 or later
+- Go 1.21 or later
 - 256 MB RAM (light mode) or 2+ GB RAM (fast mode)
 
 ## Quick Start
