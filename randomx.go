@@ -154,7 +154,7 @@ func (h *Hasher) Hash(input []byte) [32]byte {
 // UpdateCacheKey updates the cache key and regenerates the dataset.
 // This is an expensive operation (20-30 seconds for fast mode).
 // Returns nil if the new key matches the current key.
-// 
+//
 // On error, the hasher remains in its previous state and can continue
 // to be used with the old cache key.
 func (h *Hasher) UpdateCacheKey(newKey []byte) error {
@@ -200,7 +200,7 @@ func (h *Hasher) UpdateCacheKey(newKey []byte) error {
 	if h.cache != nil {
 		h.cache.release()
 	}
-	
+
 	h.cache = newCache
 	h.ds = newDS
 

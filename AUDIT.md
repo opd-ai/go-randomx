@@ -269,6 +269,7 @@ func BenchmarkHasher_Hash(b *testing.B) {
 
 ### Gap #5: Roadmap Item Already Implemented
 **Severity:** Minor  
+**Status:** ✅ **RESOLVED** (Commit: e61e13a, Date: October 15, 2025)  
 **Documentation Reference:** 
 > "## Roadmap  
 > - [ ] Optimize dataset generation with parallel computation" (README.md:371-372)
@@ -315,6 +316,7 @@ numWorkers := runtime.NumCPU()
 
 ### Gap #6: UpdateCacheKey Error Handling Leaves Hasher in Broken State
 **Severity:** Critical  
+**Status:** ✅ **RESOLVED** (Commit: c094bba, Date: October 15, 2025)  
 **Documentation Reference:** 
 > "// UpdateCacheKey updates the cache key and regenerates the dataset.  
 > // This is an expensive operation (20-30 seconds for fast mode).  
@@ -407,6 +409,7 @@ if err != nil {
 
 ### Gap #7: Go Version Requirement Inconsistency
 **Severity:** Minor  
+**Status:** ✅ **RESOLVED** (Commit: ebea746, Date: October 15, 2025)  
 **Documentation Reference:** 
 > "**Requirements:**  
 > - Go 1.19 or later" (README.md:27-28)
@@ -441,6 +444,7 @@ go.mod:3: go 1.21
 
 ### Gap #8: Mode Memory Usage Values Slightly Inconsistent
 **Severity:** Minor  
+**Status:** ✅ **RESOLVED** (Commit: 1d5c4e3, Date: October 15, 2025)  
 **Documentation Reference:** 
 > "LightMode Mode = iota // 256 MB, slower hashing  
 > FastMode              // 2080 MB, faster hashing" (README.md:171-172)
