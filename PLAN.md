@@ -899,7 +899,15 @@ func main() {
     - Created 14 comprehensive tests including error cases
     - Benchmarked: XOR=124ns, Copy=13ns, Zero=0.4ns (zero allocations)
     - All tests passing with >95% coverage
-  - [ ] Phase 3: Blake2b G function (3 hours)
+  - [x] Phase 3: Blake2b G function (3 hours) ✅ **COMPLETED October 15, 2025**
+    - Implemented g() mixing function from Blake2b specification
+    - Implemented rotr64() constant-time rotation function
+    - Implemented gRound() for applying G to 16-element blocks
+    - Created 11 comprehensive tests with determinism checks
+    - Benchmarked: g()=3.9ns, rotr64()=0.35ns, gRound()=21ns (zero allocations)
+    - All tests passing with property-based validation
+    - Ready for use in block compression (Phase 4)
+  - [ ] Phase 4: Block compression (4 hours)
   - [ ] Phase 4: Block compression (4 hours)
   - [ ] Phase 5: Data-dependent indexing (3 hours)
   - [ ] Phase 6: Memory filling (4 hours)
