@@ -314,6 +314,30 @@ func TestHasherPanicAfterClose(t *testing.T) {
 	hasher.Hash([]byte("test"))
 }
 
+// TestQuickStartExample validates the hash output from the README Quick Start example.
+// This ensures the documented example produces the expected hash.
+func TestQuickStartExample(t *testing.T) {
+	config := Config{
+		Mode:     FastMode,
+		CacheKey: []byte("RandomX example key"),
+	}
+
+	hasher, err := New(config)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	defer hasher.Close()
+
+	hash := hasher.Hash([]byte("RandomX example input"))
+	expected := "6e2fae47ac7365c1008c046f88dcb5243a7cc8d500616a4a9afcc881f470fb3b"
+	actual := hex.EncodeToString(hash[:])
+
+	if actual != expected {
+		t.Errorf("Quick Start example hash mismatch:\ngot:  %s\nwant: %s", actual, expected)
+		t.Log("Note: This may indicate the example hash in README.md needs to be updated")
+	}
+}
+
 // Test bytesEqual helper function
 func TestBytesEqual(t *testing.T) {
 	tests := []struct {

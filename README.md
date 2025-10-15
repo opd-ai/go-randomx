@@ -58,7 +58,7 @@ func main() {
     // Compute hash
     hash := hasher.Hash([]byte("RandomX example input"))
     fmt.Printf("Hash: %s\n", hex.EncodeToString(hash[:]))
-    // Output: Hash: 6ee0f06939bf883f49236d4021b30bc4be71e8190a7c8d8e364eb840cc9c5f1e
+    // Output: Hash: 6e2fae47ac7365c1008c046f88dcb5243a7cc8d500616a4a9afcc881f470fb3b
 }
 ```
 
