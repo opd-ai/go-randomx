@@ -369,7 +369,7 @@ Highly permissive license suitable for commercial use and compatible with crypto
 
 ## Roadmap
 
-- [ ] Optimize dataset generation with parallel computation
+- [x] Optimize dataset generation with parallel computation
 - [ ] Add support for custom memory allocators
 - [ ] Implement hardware feature detection (AVX2, etc.)
 - [ ] Provide CGo-free SIMD optimizations where possible
