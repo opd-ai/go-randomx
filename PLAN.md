@@ -916,7 +916,16 @@ func main() {
     - Benchmarked: fillBlock()=1758ns, applyBlake2bRound()=172ns (zero allocations)
     - All tests passing with >95% coverage
     - Ready for data-dependent indexing (Phase 5)
-  - [ ] Phase 5: Data-dependent indexing (3 hours) ⏳ **NEXT**
+  - [x] Phase 5: Data-dependent indexing (3 hours) ✅ **COMPLETED October 15, 2025**
+    - Implemented Position struct for tracking memory location
+    - Implemented indexAlpha() with quadratic distribution
+    - Data-dependent addressing using block data (the "d" in Argon2d!)
+    - Created 11 comprehensive tests including distribution validation
+    - Benchmarked: indexAlpha()=3.7ns (zero allocations)
+    - Verified quadratic distribution favors recent blocks
+    - All tests passing with >90% coverage
+    - Ready for memory filling (Phase 6)
+  - [ ] Phase 6: Memory filling (4 hours) ⏳ **NEXT**
   - [ ] Phase 4: Block compression (4 hours)
   - [ ] Phase 5: Data-dependent indexing (3 hours)
   - [ ] Phase 6: Memory filling (4 hours)
