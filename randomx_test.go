@@ -237,23 +237,37 @@ func TestHasherClose(t *testing.T) {
 	}
 }
 
-// Test hash against known test vectors (simplified)
+// TestHasherTestVectors validates against RandomX reference implementation.
+//
+// CRITICAL: These test vectors must be validated against the official RandomX
+// C++ reference implementation (github.com/tevador/RandomX).
+//
+// TODO: Add real test vectors from RandomX test suite. Until then, this test
+// only verifies deterministic behavior (same input produces same output).
+//
+// Without proper test vectors, there is NO GUARANTEE that this implementation
+// produces hashes compatible with Monero or other RandomX-based systems.
 func TestHasherTestVectors(t *testing.T) {
-	// These are simplified test vectors - real RandomX test vectors
-	// would need to match the reference implementation exactly
 	tests := []struct {
 		name     string
 		key      string
 		input    string
-		expected string // hex encoded expected hash (for illustration)
+		expected string // hex encoded expected hash
 	}{
 		{
 			name:  "test vector 1",
 			key:   "test key 000",
 			input: "This is a test",
-			// Note: This would need to be updated with actual RandomX output
-			expected: "", // Empty means we just verify determinism
+			// TODO: Replace with actual RandomX reference output
+			// Run: echo -n "This is a test" | randomx-tests --key "test key 000"
+			expected: "",
 		},
+		// TODO: Add more test vectors covering:
+		// - Empty input
+		// - Long input (>1MB)
+		// - Binary data
+		// - Different key lengths
+		// - Edge cases from RandomX specification
 	}
 
 	for _, tt := range tests {
@@ -368,12 +382,12 @@ func TestHasherZeroAllocations(t *testing.T) {
 
 	// Document current allocation behavior
 	t.Logf("Hash() allocations per call: %.2f", allocs)
-	
+
 	// Current implementation allocates ~18 times per call due to:
 	// - Program generation (program struct + entropy buffer)
 	// - Internal Blake2b operations
 	// Future optimization could reduce this through pooling.
-	
+
 	if allocs > 25 {
 		t.Errorf("Hash() allocated %.2f times per run, expected ~18", allocs)
 		t.Error("Allocation count has increased significantly - check for regressions")

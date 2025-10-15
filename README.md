@@ -6,6 +6,8 @@ High-performance RandomX implementation in pure Go.
 [![Go Report Card](https://goreportcard.com/badge/github.com/opd-ai/go-randomx)](https://goreportcard.com/report/github.com/opd-ai/go-randomx)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+> **⚠️ WARNING**: This implementation has not been validated against official RandomX test vectors. Hash outputs may not be compatible with Monero or other RandomX-based systems. **DO NOT use for production blockchain validation or mining until proper test vectors are implemented.**
+
 ## Overview
 
 `go-randomx` is a pure Go implementation of the [RandomX](https://github.com/tevador/RandomX) proof-of-work algorithm used by Monero and other cryptocurrencies. It provides ASIC-resistant hashing through CPU-intensive random code execution without requiring CGo or platform-specific assembly.
@@ -16,7 +18,7 @@ High-performance RandomX implementation in pure Go.
 - ✅ **Thread-Safe** - Concurrent hashing operations with proper synchronization
 - ✅ **Memory Efficient** - Pooled allocations and minimal GC pressure
 - ✅ **Foolproof API** - Hard to misuse, clear error handling
-- ✅ **Battle-Tested** - Validated against reference implementation test vectors
+- ⚠️  **Test Vectors Needed** - Requires validation against official RandomX tests
 
 ## Installation
 
@@ -301,12 +303,14 @@ go test -v -run TestVectors
 
 **Test Coverage**: >80% across all packages
 
+**⚠️ Important**: Test vectors against the RandomX reference implementation are not yet implemented. While the implementation follows the RandomX specification, it has not been validated for hash compatibility with the official C++ implementation. Use with caution in production blockchain validation until proper test vectors are added.
+
 ## Monero Integration
 
 ### Compatible Versions
 
 - Monero v0.18+ (RandomX v1.1.10+)
-- Compatible with current Monero network rules
+- ⚠️ Hash compatibility not yet verified against monerod
 
 ### Example: Block Hash Validation
 
@@ -371,6 +375,7 @@ Highly permissive license suitable for commercial use and compatible with crypto
 
 ## Roadmap
 
+- [ ] **CRITICAL: Validate against official RandomX test vectors**
 - [x] Optimize dataset generation with parallel computation
 - [ ] Add support for custom memory allocators
 - [ ] Implement hardware feature detection (AVX2, etc.)
@@ -380,6 +385,6 @@ Highly permissive license suitable for commercial use and compatible with crypto
 
 ---
 
-**Status**: Under active development. API may change before v1.0.0 release.
+**Status**: ⚠️ **NOT PRODUCTION READY** - Requires RandomX test vector validation before use in blockchain applications.
 
 **Tested On**: Linux (amd64, arm64), macOS (amd64, arm64), Windows (amd64)
