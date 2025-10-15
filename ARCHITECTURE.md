@@ -277,12 +277,17 @@ BenchmarkHasher_Hash_Parallel-8    1000    2,000,000 ns/op    0 B/op    0 allocs
 
 **Example**: VM instruction execution split into 16 small handlers
 
-### 5. Zero Allocations in Hot Path
+### 5. Minimal Allocations in Hot Path
+
+**Goal**: Reduce allocations to improve performance and reduce GC pressure
 
 **Techniques**:
 - Object pooling (`sync.Pool` for VMs and scratchpads)
-- Pre-allocated buffers
+- Pre-allocated buffers where possible
 - Stack allocation for small structures
+
+**Current Status**: Hash() makes ~18 allocations per call (primarily from program generation).
+Future optimization opportunities exist in program and entropy buffer pooling.
 
 **Verification**: Use `-benchmem` flag to check allocations
 

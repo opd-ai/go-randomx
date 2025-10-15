@@ -219,11 +219,11 @@ Tested on AMD Ryzen 9 5950X (16 cores, 3.4 GHz base):
 2. **Reuse Hasher Instances**: Dataset initialization is expensive
 3. **Concurrent Hashing**: `Hash()` is thread-safe, use goroutines
 4. **Avoid Frequent UpdateCacheKey()**: Only call when seed actually changes
-5. **Pre-warm on Startup**: First hash may be slower due to CPU cache effects
+5. **Batch Operations**: Process multiple hashes per hasher instance
 
 ### Memory Management
 
-- **Zero Allocations**: Hash() path allocates no memory after warmup
+- **Minimal Allocations**: Hash() minimizes allocations through memory pooling
 - **Pooled Resources**: VM and scratchpad objects reused via `sync.Pool`
 - **Explicit Lifecycle**: Call `Close()` to release ~2 GB immediately (fast mode)
 - **GC Friendly**: Large allocations structured to minimize GC scanning

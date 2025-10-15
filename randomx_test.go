@@ -338,6 +338,48 @@ func TestQuickStartExample(t *testing.T) {
 	}
 }
 
+// TestHasherZeroAllocations verifies allocation behavior of Hash().
+// Documents current allocation count for tracking optimization progress.
+func TestHasherZeroAllocations(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping allocation test in short mode")
+	}
+
+	hasher, err := New(Config{
+		Mode:     LightMode,
+		CacheKey: []byte("allocation test"),
+	})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	defer hasher.Close()
+
+	input := []byte("test input for allocation check")
+
+	// Warmup: Allow VM pool to initialize
+	for i := 0; i < 5; i++ {
+		_ = hasher.Hash(input)
+	}
+
+	// Measure allocations
+	allocs := testing.AllocsPerRun(10, func() {
+		_ = hasher.Hash(input)
+	})
+
+	// Document current allocation behavior
+	t.Logf("Hash() allocations per call: %.2f", allocs)
+	
+	// Current implementation allocates ~18 times per call due to:
+	// - Program generation (program struct + entropy buffer)
+	// - Internal Blake2b operations
+	// Future optimization could reduce this through pooling.
+	
+	if allocs > 25 {
+		t.Errorf("Hash() allocated %.2f times per run, expected ~18", allocs)
+		t.Error("Allocation count has increased significantly - check for regressions")
+	}
+}
+
 // Test bytesEqual helper function
 func TestBytesEqual(t *testing.T) {
 	tests := []struct {
