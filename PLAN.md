@@ -862,7 +862,7 @@ func main() {
 
 ## Timeline and Milestones
 
-### Phase 1: Critical (Week 1)
+### Phase 1: Critical (Week 1-2)
 - [x] Day 1: Obtain and implement test vectors infrastructure ✅ **COMPLETED October 15, 2025**
   - Extracted official test vectors from RandomX reference implementation (github.com/tevador/RandomX)
   - Created `testdata/randomx_vectors.json` with 4 official test vectors
@@ -871,29 +871,31 @@ func main() {
   - Verified TestOfficialVectors correctly identifies hash mismatches
   - Confirmed implementation is deterministic (same input → same output)
   - All existing tests still pass (no regressions)
+  
 - [x] Day 2: Root cause analysis ✅ **COMPLETED October 15, 2025**
   - 🔴 **CRITICAL ISSUE IDENTIFIED**: golang.org/x/crypto/argon2 provides Argon2i/id, NOT Argon2d
   - RandomX specifically requires Argon2d (data-dependent mode)
   - This is the ROOT CAUSE of all hash mismatches
-  - See ARGON2D_ISSUE.md for full analysis and solution options
+  - Documented in `ARGON2D_ISSUE.md` - full analysis and solution options
+  - Documented in `DEBUGGING_SESSION_OCT15.md` - investigation notes
+  - Created `ARGON2D_IMPLEMENTATION_GUIDE.md` - detailed implementation roadmap with 8 phases
   - Placeholder implementation added to allow continued development
-- [ ] Day 3-6: **Implement proper Argon2d** (NEW - CRITICAL BLOCKER) ⏳ **IN PROGRESS**
-  - [x] Research existing Go Argon2d implementations (none found suitable)
-  - [x] Analyze RandomX argon2_core.c structure
-  - [x] Document implementation requirements (see below)
-  - [ ] Port Argon2d Blake2b-based G function
-  - [ ] Implement data-dependent addressing (index_alpha)
-  - [ ] Port block mixing and compression
-  - [ ] Validate cache generation against reference
-  - [ ] Test with official vectors
+  - Research completed: No suitable existing Go Argon2d libraries found
+  - Path forward: Port Argon2d from RandomX C implementation (24 hours estimated)
   
-  **Implementation Notes**:
-  - RandomX uses Argon2d v1.3 with custom parameters
-  - Core algorithm in `RandomX/src/argon2_core.c` (~1200 lines)
-  - Key functions to port: `fill_memory_blocks`, `fill_block`, `randomx_argon2_index_alpha`
-  - Blake2b compression function already available via `golang.org/x/crypto/blake2b`
-  - Estimated effort: 3-4 focused days for correct implementation
-  - Cannot rush - cryptographic correctness is critical
+- [ ] Days 3-6: **Implement proper Argon2d** (CRITICAL BLOCKER) ⏳ **READY TO START**
+  - [x] Research existing Go Argon2d implementations → None suitable
+  - [x] Analyze RandomX argon2_core.c structure → Documented
+  - [x] Create detailed implementation guide → `ARGON2D_IMPLEMENTATION_GUIDE.md`
+  - [ ] Phase 1: Blake2b utilities (2 hours)
+  - [ ] Phase 2: Block structures (2 hours)
+  - [ ] Phase 3: Blake2b G function (3 hours)
+  - [ ] Phase 4: Block compression (4 hours)
+  - [ ] Phase 5: Data-dependent indexing (3 hours)
+  - [ ] Phase 6: Memory filling (4 hours)
+  - [ ] Phase 7: Public API (2 hours)
+  - [ ] Phase 8: Validation against reference (4 hours)
+  
 - [ ] Day 7: Validate all test vectors pass
 - [ ] Day 8: Update documentation, remove warnings
 
