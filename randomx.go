@@ -154,6 +154,9 @@ func (h *Hasher) Hash(input []byte) [32]byte {
 // UpdateCacheKey updates the cache key and regenerates the dataset.
 // This is an expensive operation (20-30 seconds for fast mode).
 // Returns nil if the new key matches the current key.
+// 
+// On error, the hasher remains in its previous state and can continue
+// to be used with the old cache key.
 func (h *Hasher) UpdateCacheKey(newKey []byte) error {
 	if len(newKey) == 0 {
 		return errors.New("randomx: cache key must not be empty")
@@ -171,32 +174,35 @@ func (h *Hasher) UpdateCacheKey(newKey []byte) error {
 		return nil
 	}
 
-	// Release old cache and dataset
+	// Create new cache first (don't release old resources yet)
+	var err error
+	newCache, err := newCache(newKey)
+	if err != nil {
+		// Old cache/dataset still intact, hasher remains usable
+		return fmt.Errorf("randomx: cache regeneration: %w", err)
+	}
+
+	// Create new dataset for fast mode (if needed)
+	var newDS *dataset
+	if h.config.Mode == FastMode {
+		newDS, err = newDataset(newCache)
+		if err != nil {
+			// Clean up newly created cache, keep old resources intact
+			newCache.release()
+			return fmt.Errorf("randomx: dataset regeneration: %w", err)
+		}
+	}
+
+	// Success! Now safely release old resources and swap in new ones
 	if h.ds != nil {
 		h.ds.release()
-		h.ds = nil
 	}
 	if h.cache != nil {
 		h.cache.release()
 	}
-
-	// Create new cache
-	var err error
-	h.cache, err = newCache(newKey)
-	if err != nil {
-		h.closed = true
-		return fmt.Errorf("randomx: cache regeneration: %w", err)
-	}
-
-	// Create new dataset for fast mode
-	if h.config.Mode == FastMode {
-		h.ds, err = newDataset(h.cache)
-		if err != nil {
-			h.cache.release()
-			h.closed = true
-			return fmt.Errorf("randomx: dataset regeneration: %w", err)
-		}
-	}
+	
+	h.cache = newCache
+	h.ds = newDS
 
 	// Update stored key
 	h.config.CacheKey = append([]byte(nil), newKey...)
