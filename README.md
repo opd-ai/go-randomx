@@ -6,7 +6,7 @@ High-performance RandomX implementation in pure Go.
 [![Go Report Card](https://goreportcard.com/badge/github.com/opd-ai/go-randomx)](https://goreportcard.com/report/github.com/opd-ai/go-randomx)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-> **⚠️ WARNING**: This implementation has not been validated against official RandomX test vectors. Hash outputs may not be compatible with Monero or other RandomX-based systems. **DO NOT use for production blockchain validation or mining until proper test vectors are implemented.**
+> **⚠️ WARNING**: This implementation has test vector infrastructure in place but hash outputs do not yet match the official RandomX reference implementation. Hash compatibility validation is in progress. **DO NOT use for production blockchain validation or mining until all official test vectors pass.**
 
 ## Overview
 
@@ -18,7 +18,7 @@ High-performance RandomX implementation in pure Go.
 - ✅ **Thread-Safe** - Concurrent hashing operations with proper synchronization
 - ✅ **Memory Efficient** - Pooled allocations and minimal GC pressure
 - ✅ **Foolproof API** - Hard to misuse, clear error handling
-- ⚠️  **Test Vectors Needed** - Requires validation against official RandomX tests
+- 🔄 **Test Vectors In Progress** - Infrastructure complete, validating against official RandomX tests
 
 ## Installation
 
@@ -298,12 +298,12 @@ go test -race ./...
 go test -bench=. -benchmem
 
 # Test vectors validation
-go test -v -run TestVectors
+go test -v -run TestOfficialVectors
 ```
 
 **Test Coverage**: >80% across all packages
 
-**⚠️ Important**: Test vectors against the RandomX reference implementation are not yet implemented. While the implementation follows the RandomX specification, it has not been validated for hash compatibility with the official C++ implementation. Use with caution in production blockchain validation until proper test vectors are added.
+**📊 Test Vector Status**: Infrastructure complete with 4 official test vectors from RandomX reference implementation (github.com/tevador/RandomX). Hash validation in progress - current implementation is deterministic but does not yet match reference output. See `PLAN.md` for implementation roadmap.
 
 ## Monero Integration
 

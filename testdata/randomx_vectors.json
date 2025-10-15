@@ -1,0 +1,36 @@
+{
+  "version": "1.2.1",
+  "description": "Official RandomX test vectors from reference implementation (github.com/tevador/RandomX)",
+  "source": "RandomX/src/tests/tests.cpp",
+  "license": "BSD-3-Clause",
+  "vectors": [
+    {
+      "name": "basic_test_1",
+      "mode": "light",
+      "key": "test key 000",
+      "input": "This is a test",
+      "expected": "639183aae1bf4c9a35884cb46b09cad9175f04efd7684e7262a0ac1c2f0b4e3f"
+    },
+    {
+      "name": "basic_test_2",
+      "mode": "light",
+      "key": "test key 000",
+      "input": "Lorem ipsum dolor sit amet",
+      "expected": "300a0adb47603dedb42228ccb2b211104f4da45af709cd7547cd049e9489c969"
+    },
+    {
+      "name": "basic_test_3",
+      "mode": "light",
+      "key": "test key 000",
+      "input": "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua\n",
+      "expected": "c36d4ed4191e617309867ed66a443be4075014e2b061bcdaf9ce7b721d2b77a8"
+    },
+    {
+      "name": "different_key",
+      "mode": "light",
+      "key": "test key 001",
+      "input": "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua\n",
+      "expected": "e9ff4503201c0c2cca26d285c93ae883f9b1d30c9eb240b820756f2d5a7905fc"
+    }
+  ]
+}
