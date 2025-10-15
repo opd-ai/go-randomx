@@ -45,8 +45,8 @@ type Config struct {
 // Mode - Operating mode
 type Mode int
 const (
-    LightMode Mode = iota  // 256 MB memory, slower
-    FastMode               // 2+ GB memory, faster
+    LightMode Mode = iota  // ~256 MB memory, slower
+    FastMode               // ~2 GB memory, faster
 )
 
 // Flags - CPU optimization flags
@@ -137,7 +137,15 @@ func (m *Miner) Hash(data []byte) [32]byte {
 
 ```go
 // For mining/high throughput
-Mode: randomx.FastMode  // 2-4x faster, needs 2+ GB RAM
+#### Fast Mode (Recommended for Mining)
+```go
+Mode: randomx.FastMode  // 2-4x faster, needs ~2 GB RAM
+```
+
+#### Light Mode (Memory-Constrained)
+```go
+Mode: randomx.LightMode // Uses only ~256 MB RAM
+```
 
 // For memory-constrained environments
 Mode: randomx.LightMode // Uses only ~256 MB RAM
@@ -241,7 +249,7 @@ go run ./examples/mining -workers=4 -target="00000000"
 | Mode | Cache | Dataset | Per Worker | Total |
 |------|-------|---------|------------|-------|
 | Light | 256 KB | - | 2 MB | ~2.3 MB + (2MB × workers) |
-| Fast | 256 KB | 2080 MB | 2 MB | ~2082 MB + (2MB × workers) |
+| Fast | 256 KB | ~2 GB | 2 MB | ~2 GB + (2MB × workers) |
 
 ## Performance
 
@@ -280,7 +288,7 @@ if hasher.IsReady() {
 
 ### Out of memory (fast mode)
 ```go
-// If you don't have 2+ GB RAM available:
+// If you don't have ~2 GB RAM available:
 config := randomx.Config{
     Mode:     randomx.LightMode,  // Use light mode
     CacheKey: seed,
@@ -291,7 +299,7 @@ config := randomx.Config{
 
 ### Slow Performance
 
-1. **Use Fast Mode**: If you have 2+ GB RAM
+1. **Use Fast Mode**: If you have ~2 GB RAM
 2. **Reuse Hasher**: Don't create new hasher per hash
 3. **Parallel Workers**: Use multiple goroutines
 4. **Check CPU**: Ensure AES-NI support
@@ -332,7 +340,7 @@ MIT License - See [LICENSE](LICENSE) file
 
 **Quick Questions?**
 - Installation issues: Check Go version (need 1.21+)
-- Performance issues: Use fast mode with 2+ GB RAM
+- Performance issues: Use fast mode with ~2 GB RAM
 - Memory issues: Use light mode
 - Concurrency: Hasher is thread-safe, reuse it!
 

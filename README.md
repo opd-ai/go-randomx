@@ -26,7 +26,7 @@ go get github.com/opd-ai/go-randomx
 
 **Requirements:**
 - Go 1.21 or later
-- 256 MB RAM (light mode) or 2+ GB RAM (fast mode)
+- 256 MB RAM (light mode) or 2 GB RAM (fast mode)
 
 ## Quick Start
 
@@ -170,8 +170,8 @@ type Config struct {
 // Mode determines memory/performance tradeoff
 type Mode int
 const (
-    LightMode Mode = iota // 256 MB, slower hashing
-    FastMode              // 2080 MB, faster hashing
+    LightMode Mode = iota // ~256 MB, slower hashing
+    FastMode              // ~2 GB, faster hashing
 )
 ```
 
@@ -206,7 +206,7 @@ Tested on AMD Ryzen 9 5950X (16 cores, 3.4 GHz base):
 | Mode       | Memory Usage | Hash Rate     | Initialization Time |
 |------------|--------------|---------------|---------------------|
 | Light Mode | ~256 MB      | ~5,000 H/s    | <1 second           |
-| Fast Mode  | ~2,080 MB    | ~15,000 H/s   | ~15 seconds         |
+| Fast Mode  | ~2 GB        | ~15,000 H/s   | ~15 seconds         |
 
 **Notes:**
 - Performance is ~50-60% of CGo-based implementations (expected for pure Go)
@@ -225,7 +225,7 @@ Tested on AMD Ryzen 9 5950X (16 cores, 3.4 GHz base):
 
 - **Zero Allocations**: Hash() path allocates no memory after warmup
 - **Pooled Resources**: VM and scratchpad objects reused via `sync.Pool`
-- **Explicit Lifecycle**: Call `Close()` to release 2+ GB immediately
+- **Explicit Lifecycle**: Call `Close()` to release ~2 GB immediately (fast mode)
 - **GC Friendly**: Large allocations structured to minimize GC scanning
 
 ## Architecture
