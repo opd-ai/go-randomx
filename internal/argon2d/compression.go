@@ -21,7 +21,7 @@ const (
 //  1. R = refBlock XOR prevBlock
 //  2. If withXOR: R = R XOR nextBlock
 //  3. Apply 8 rounds of Blake2b compression
-//  4. Z = R XOR prevBlock  
+//  4. Z = R XOR prevBlock
 //  5. If withXOR: Z = Z XOR nextBlock
 //  6. nextBlock = Z
 func fillBlock(prevBlock, refBlock, nextBlock *Block, withXOR bool) {
