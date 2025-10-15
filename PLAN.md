@@ -871,9 +871,19 @@ func main() {
   - Verified TestOfficialVectors correctly identifies hash mismatches
   - Confirmed implementation is deterministic (same input → same output)
   - All existing tests still pass (no regressions)
-- [ ] Day 2-3: Debug and fix hash mismatches to match reference implementation
-- [ ] Day 4: Update documentation, remove warnings
-- [ ] Day 5: Tag v1.0.0 release
+- [x] Day 2: Root cause analysis ✅ **COMPLETED October 15, 2025**
+  - 🔴 **CRITICAL ISSUE IDENTIFIED**: golang.org/x/crypto/argon2 provides Argon2i/id, NOT Argon2d
+  - RandomX specifically requires Argon2d (data-dependent mode)
+  - This is the ROOT CAUSE of all hash mismatches
+  - See ARGON2D_ISSUE.md for full analysis and solution options
+  - Placeholder implementation added to allow continued development
+- [ ] Day 3-6: **Implement proper Argon2d** (NEW - CRITICAL BLOCKER)
+  - Study RandomX argon2 implementation
+  - Port Argon2d core algorithm to pure Go
+  - Validate cache generation against reference
+  - Test with official vectors
+- [ ] Day 7: Validate all test vectors pass
+- [ ] Day 8: Update documentation, remove warnings
 
 ### Phase 2: Optimization (Week 2)
 - [ ] Day 1-2: Implement program pooling
