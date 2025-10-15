@@ -163,7 +163,7 @@ type Hasher struct { /* ... */ }
 // Config specifies hasher initialization parameters
 type Config struct {
     Mode     Mode   // Operating mode (LightMode or FastMode)
-    Flags    Flags  // CPU feature flags (auto-detected if zero)
+    Flags    Flags  // Reserved for future use (currently unused)
     CacheKey []byte // Seed for dataset generation (required)
 }
 
@@ -271,6 +271,8 @@ Pure Go implementation is **2-5x slower** than the reference C++ implementation 
 ### AES Performance
 
 Go's `crypto/aes` uses AES-NI instructions when available but adds abstraction overhead. For optimal performance, ensure your CPU supports AES-NI (Intel Core 2010+, AMD Ryzen).
+
+**Note**: The `Flags` field in `Config` is currently unused. Go's standard library automatically detects and uses hardware acceleration. This field is reserved for potential future optimizations.
 
 ### Floating-Point Determinism
 

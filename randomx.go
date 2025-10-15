@@ -51,6 +51,9 @@ func (m Mode) String() string {
 }
 
 // Flags represents CPU feature flags for optimization.
+//
+// Note: Currently unused. Go's crypto/aes automatically uses hardware AES-NI
+// when available. This field is reserved for future optimizations.
 type Flags uint32
 
 const (
@@ -58,6 +61,7 @@ const (
 	FlagDefault Flags = 0
 
 	// FlagAES indicates hardware AES support (AES-NI on x86).
+	// Note: Currently has no effect. crypto/aes uses AES-NI automatically.
 	FlagAES Flags = 1 << 0
 
 	// Future flags can be added here for additional CPU features.
@@ -69,7 +73,9 @@ type Config struct {
 	Mode Mode
 
 	// Flags specifies CPU feature optimizations to enable.
-	// Use FlagDefault for automatic detection.
+	//
+	// Note: Currently unused. Reserved for future CPU-specific optimizations.
+	// Go's crypto/aes automatically detects and uses AES-NI when available.
 	Flags Flags
 
 	// CacheKey is the seed used to generate the cache and dataset.
