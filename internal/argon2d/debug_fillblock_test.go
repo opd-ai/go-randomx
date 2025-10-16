@@ -37,6 +37,10 @@ func TestFillBlock_WithFBlaMka(t *testing.T) {
 	}
 
 	// Case 2: Same blocks (self-reference)
+	// When prev and ref have identical content, their XOR produces all zeros.
+	// The fBlaMka compression function correctly outputs all zeros from all-zero input.
+	// This is expected behavior per Argon2 spec - fBlaMka(0,0) = 0.
+	// In practice, the indexing algorithm prevents this case from occurring.
 	for i := range prev {
 		prev[i] = uint64(i + 1)
 	}
@@ -60,9 +64,9 @@ func TestFillBlock_WithFBlaMka(t *testing.T) {
 	}
 
 	if allZero {
-		t.Error("fillBlock produced all zeros with self-reference (fBlaMka should prevent this)")
+		t.Log("✓ Self-reference: all-zero output (correct - XOR of identical blocks = 0)")
 	} else {
-		t.Log("✓ Self-reference: non-zero output (fBlaMka working)")
+		t.Error("fillBlock produced non-zero output with self-reference (unexpected - should be all zeros)")
 	}
 
 	// Case 3: All-zero input blocks

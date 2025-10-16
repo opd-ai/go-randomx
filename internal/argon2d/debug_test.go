@@ -6,16 +6,22 @@ import (
 )
 
 // TestG_Zeros tests the g function with zero inputs.
+// NOTE: g(0,0,0,0) correctly produces all zeros because fBlaMka(0,0) = 0.
+// This is expected behavior per Argon2 specification.
 func TestG_Zeros(t *testing.T) {
 	a, b, c, d := g(0, 0, 0, 0)
 	t.Logf("g(0,0,0,0) = (%d, %d, %d, %d)", a, b, c, d)
 
 	if a == 0 && b == 0 && c == 0 && d == 0 {
-		t.Error("g(0,0,0,0) produced all zeros - this is the bug!")
+		t.Log("✓ g(0,0,0,0) correctly produces all zeros (fBlaMka property)")
+	} else {
+		t.Error("g(0,0,0,0) produced non-zero output (unexpected)")
 	}
 }
 
 // TestFillBlock_SameBlocks tests fillBlock with identical prev and ref.
+// When prev and ref have identical content, XOR produces all zeros.
+// The compression function correctly outputs all zeros from all-zero input.
 func TestFillBlock_SameBlocks(t *testing.T) {
 	var prev, ref, next Block
 
@@ -38,10 +44,12 @@ func TestFillBlock_SameBlocks(t *testing.T) {
 	t.Logf("next[1] = %d", next[1])
 	t.Logf("next[127] = %d", next[127])
 
-	// Result should still be non-zero!
-	// Because: R = prev XOR ref = 0, then compression should produce non-zero
+	// Result should be all zeros because:
+	// R = prev XOR ref = 0 (identical blocks), then compression of zeros = zeros
 	if next[0] == 0 && next[1] == 0 && next[127] == 0 {
-		t.Error("fillBlock produced all zeros when prev==ref")
+		t.Log("✓ fillBlock correctly produces all zeros when prev==ref (expected)")
+	} else {
+		t.Error("fillBlock produced non-zero output with identical blocks (unexpected)")
 	}
 }
 
