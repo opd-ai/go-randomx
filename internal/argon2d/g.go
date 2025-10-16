@@ -6,22 +6,25 @@ package argon2d
 // It takes four uint64 values and applies a series of additions, XORs, and
 // rotations to thoroughly mix the values.
 //
-// This function is called during block compression (fill_block) to provide
-// cryptographic diffusion across the 1024-byte blocks.
+// Argon2 uses the fBlaMka operation: a + b + 2*mul(a, b) where mul uses only
+// the lower 32 bits of each operand. This provides additional diffusion and
+// prevents the all-zero state from propagating through the compression function.
 //
 // Reference: Blake2b specification Section 3.2
-// Reference: Argon2 specification Section 3.3
+// Reference: Argon2 specification Section 3.6 (fBlaMka)
+// Reference: RFC 9106 - Argon2 Memory-Hard Function
 func g(a, b, c, d uint64) (uint64, uint64, uint64, uint64) {
-	// First round: addition and rotation by 32
-	a = a + b
+	// First round: fBlaMka addition and rotation by 32
+	// fBlaMka(a, b) = a + b + 2 * (uint32(a) * uint32(b))
+	a = a + b + 2*uint64(uint32(a))*uint64(uint32(b))
 	d = rotr64(d^a, 32)
-	c = c + d
+	c = c + d + 2*uint64(uint32(c))*uint64(uint32(d))
 	b = rotr64(b^c, 24)
 
-	// Second round: addition and rotation by 16
-	a = a + b
+	// Second round: fBlaMka addition and rotation by 16
+	a = a + b + 2*uint64(uint32(a))*uint64(uint32(b))
 	d = rotr64(d^a, 16)
-	c = c + d
+	c = c + d + 2*uint64(uint32(c))*uint64(uint32(d))
 	b = rotr64(b^c, 63)
 
 	return a, b, c, d

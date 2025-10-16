@@ -17,33 +17,32 @@ const (
 //   - nextBlock: The output block to fill
 //   - withXOR: If true, XOR with existing nextBlock content (used after first pass)
 //
-// Algorithm per Argon2 specification:
+// Algorithm per Argon2 specification (RFC 9106 Section 3.4):
 //  1. R = refBlock XOR prevBlock
-//  2. Z = R (save copy before compression)
-//  3. Apply 8 rounds of Blake2b compression to R (permutation P)
-//  4. nextBlock = R XOR Z
+//  2. Q = R (save original XOR)
+//  3. Apply permutation P (8 rounds of Blake2b with fBlaMka) to R
+//  4. nextBlock = R XOR Q
 //  5. If withXOR: nextBlock = nextBlock XOR oldNextBlock
 func fillBlock(prevBlock, refBlock, nextBlock *Block, withXOR bool) {
-	var R, Z Block
+	var R, Q Block
 
 	// Step 1: R = refBlock XOR prevBlock
 	R = *refBlock
 	R.XOR(prevBlock)
 
-	// Step 2: Z = R (save for final XOR)
-	Z = R
+	// Step 2: Q = R (save for feed-forward)
+	Q = R
 
-	// Step 3: Apply 8 rounds of Blake2b compression (permutation P)
+	// Step 3: Apply 8 rounds of Blake2b compression with fBlaMka (permutation P)
 	// Each round consists of:
 	//   - Column mixing (4 applications of G)
 	//   - Row mixing (4 applications of G)
-	// Apply 8 rounds of Blake2b permutation to the block
 	for round := 0; round < 8; round++ {
 		applyBlake2bRound(&R)
 	}
 
-	// Step 4: nextBlock = R XOR Z
-	R.XOR(&Z)
+	// Step 4: Feed-forward - R = R XOR Q
+	R.XOR(&Q)
 
 	// Step 5: If second+ pass, XOR with old nextBlock content
 	if withXOR {
@@ -51,7 +50,7 @@ func fillBlock(prevBlock, refBlock, nextBlock *Block, withXOR bool) {
 		R.XOR(&oldNext)
 	}
 
-	// Step 6: Write result to nextBlock
+	// Step 5: Write result to nextBlock
 	*nextBlock = R
 }
 

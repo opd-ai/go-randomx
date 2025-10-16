@@ -51,17 +51,18 @@ func indexAlpha(pos *Position, pseudoRand uint64, segmentLength, laneLength uint
 		// First pass: can only reference blocks processed so far
 		if pos.Slice == 0 {
 			// First slice of first pass: only previous blocks in same slice
-			referenceAreaSize = pos.Index
+			// CRITICAL: Use pos.Index - 1 to exclude the previous block being written
+			referenceAreaSize = pos.Index - 1
 		} else {
 			// Later slices: can reference all previous slices + current progress
-			referenceAreaSize = pos.Slice*segmentLength + pos.Index
+			referenceAreaSize = pos.Slice*segmentLength + pos.Index - 1
 		}
 	} else {
 		// Later passes: can reference all blocks except current segment
 		if pos.Slice == 0 {
-			referenceAreaSize = laneLength - segmentLength + pos.Index
+			referenceAreaSize = laneLength - segmentLength + pos.Index - 1
 		} else {
-			referenceAreaSize = laneLength - segmentLength + pos.Index
+			referenceAreaSize = laneLength - segmentLength + pos.Index - 1
 		}
 	}
 
