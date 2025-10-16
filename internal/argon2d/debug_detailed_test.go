@@ -33,8 +33,7 @@ func TestArgon2d_DetailedLogging(t *testing.T) {
 	t.Logf("Block 1[0] as uint64: 0x%016x", memory[1][0])
 
 	// Step 3: Fill memory with 1 pass on small memory
-	segmentLength := uint32(1) // 4 blocks / 4 sync points = 1 block per segment
-	fillMemory(memory, 1, 1, segmentLength)
+	fillMemory(memory, 1, 1)
 
 	t.Logf("\nStep 3: After fillMemory (1 pass)")
 	for i := 0; i < 4; i++ {

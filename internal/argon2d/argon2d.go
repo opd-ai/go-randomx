@@ -209,10 +209,8 @@ func Argon2d(password, salt []byte, timeCost, memorySizeKB, lanes, tagLength uin
 	initializeMemory(memory, lanes, h0)
 
 	// Step 4: Fill memory using data-dependent addressing
-	// Segment length = laneLength / SyncPoints
-	laneLength := numBlocks / lanes
-	segmentLength := laneLength / SyncPoints
-	fillMemory(memory, timeCost, lanes, segmentLength)
+	// segmentLength is calculated internally as laneLength / SyncPoints
+	fillMemory(memory, timeCost, lanes)
 
 	// Step 5: Finalize hash
 	result := finalizeHash(memory, lanes, tagLength)

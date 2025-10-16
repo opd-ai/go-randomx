@@ -12,7 +12,6 @@ package argon2d
 //   - memory: Pre-allocated slice of blocks to fill
 //   - passes: Number of passes to make over memory (3 for RandomX)
 //   - lanes: Number of parallel lanes (1 for RandomX - single-threaded)
-//   - segmentLength: Number of blocks per segment
 //
 // Algorithm per Argon2 specification:
 //
@@ -23,8 +22,9 @@ package argon2d
 //	      2. Compute reference index using indexAlpha
 //	      3. Mix prev, ref → current using fillBlock
 //	      4. Use XOR mode after first pass
-func fillMemory(memory []Block, passes, lanes, segmentLength uint32) {
+func fillMemory(memory []Block, passes, lanes uint32) {
 	laneLength := uint32(len(memory)) / lanes
+	segmentLength := laneLength / SyncPoints
 
 	for pass := uint32(0); pass < passes; pass++ {
 		for slice := uint32(0); slice < SyncPoints; slice++ {

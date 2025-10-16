@@ -10,18 +10,19 @@ func TestFillMemory_Basic(t *testing.T) {
 	const numBlocks = 32
 	memory := make([]Block, numBlocks)
 
-	// Initialize first two blocks with test data
-	for i := range memory[0] {
-		memory[0][i] = uint64(i)
-		memory[1][i] = uint64(i * 2)
-	}
+	// Initialize first two blocks using proper H0-based initialization
+	// This matches how the real Argon2d algorithm initializes memory
+	password := []byte("test password")
+	salt := []byte("test salt")
+	lanes := uint32(1)
+
+	h0 := initialHash(lanes, 32, numBlocks, 1, password, salt, nil, nil)
+	initializeMemory(memory, lanes, h0)
 
 	// Fill memory with 1 pass
 	passes := uint32(1)
-	lanes := uint32(1)
-	segmentLength := uint32(numBlocks / SyncPoints) // 8 blocks per segment
 
-	fillMemory(memory, passes, lanes, segmentLength)
+	fillMemory(memory, passes, lanes)
 
 	// Verify blocks beyond first two were modified
 	allZero := true
@@ -47,7 +48,6 @@ func TestFillMemory_Deterministic(t *testing.T) {
 	const numBlocks = 32
 	passes := uint32(1)
 	lanes := uint32(1)
-	segmentLength := uint32(numBlocks / SyncPoints)
 
 	// Create and fill first memory
 	memory1 := make([]Block, numBlocks)
@@ -55,7 +55,7 @@ func TestFillMemory_Deterministic(t *testing.T) {
 		memory1[0][i] = uint64(i * 13)
 		memory1[1][i] = uint64(i * 17)
 	}
-	fillMemory(memory1, passes, lanes, segmentLength)
+	fillMemory(memory1, passes, lanes)
 
 	// Create and fill second memory with same initialization
 	memory2 := make([]Block, numBlocks)
@@ -63,7 +63,7 @@ func TestFillMemory_Deterministic(t *testing.T) {
 		memory2[0][i] = uint64(i * 13)
 		memory2[1][i] = uint64(i * 17)
 	}
-	fillMemory(memory2, passes, lanes, segmentLength)
+	fillMemory(memory2, passes, lanes)
 
 	// Results should be identical
 	for i := 0; i < numBlocks; i++ {
@@ -79,21 +79,20 @@ func TestFillMemory_MultiPass(t *testing.T) {
 	const numBlocks = 32
 	passes := uint32(3) // RandomX uses 3 passes
 	lanes := uint32(1)
-	segmentLength := uint32(numBlocks / SyncPoints)
 
 	memory := make([]Block, numBlocks)
-	
-	// Initialize first two blocks
-	for i := range memory[0] {
-		memory[0][i] = uint64(i)
-		memory[1][i] = uint64(i * 2)
-	}
+
+	// Initialize first two blocks using proper initialization
+	password := []byte("test password")
+	salt := []byte("test salt")
+	h0 := initialHash(lanes, 32, numBlocks, 1, password, salt, nil, nil)
+	initializeMemory(memory, lanes, h0)
 
 	// Save initial state of block 2
 	initialBlock2 := memory[2]
 
 	// Fill with multiple passes
-	fillMemory(memory, passes, lanes, segmentLength)
+	fillMemory(memory, passes, lanes)
 
 	// Block 2 should be different from initial state
 	if memory[2] == initialBlock2 {
@@ -120,7 +119,6 @@ func TestFillMemory_DifferentInitialization(t *testing.T) {
 	const numBlocks = 32
 	passes := uint32(1)
 	lanes := uint32(1)
-	segmentLength := uint32(numBlocks / SyncPoints)
 
 	// Create first memory with one initialization
 	memory1 := make([]Block, numBlocks)
@@ -128,7 +126,7 @@ func TestFillMemory_DifferentInitialization(t *testing.T) {
 		memory1[0][i] = uint64(i)
 		memory1[1][i] = uint64(i * 2)
 	}
-	fillMemory(memory1, passes, lanes, segmentLength)
+	fillMemory(memory1, passes, lanes)
 
 	// Create second memory with different initialization
 	memory2 := make([]Block, numBlocks)
@@ -136,7 +134,7 @@ func TestFillMemory_DifferentInitialization(t *testing.T) {
 		memory2[0][i] = uint64(i + 1) // Different!
 		memory2[1][i] = uint64(i * 2)
 	}
-	fillMemory(memory2, passes, lanes, segmentLength)
+	fillMemory(memory2, passes, lanes)
 
 	// Results should differ
 	different := false
@@ -298,7 +296,6 @@ func TestFillMemory_XORModeAfterFirstPass(t *testing.T) {
 	const numBlocks = 32
 	passes := uint32(2)
 	lanes := uint32(1)
-	segmentLength := uint32(numBlocks / SyncPoints)
 
 	// Create memory and initialize
 	memory := make([]Block, numBlocks)
@@ -310,12 +307,12 @@ func TestFillMemory_XORModeAfterFirstPass(t *testing.T) {
 	// Fill with just first pass
 	memory1Pass := make([]Block, numBlocks)
 	copy(memory1Pass, memory)
-	fillMemory(memory1Pass, 1, lanes, segmentLength)
+	fillMemory(memory1Pass, 1, lanes)
 
 	// Fill with two passes
 	memory2Pass := make([]Block, numBlocks)
 	copy(memory2Pass, memory)
-	fillMemory(memory2Pass, passes, lanes, segmentLength)
+	fillMemory(memory2Pass, passes, lanes)
 
 	// Results should differ (second pass XORs with existing content)
 	if memory1Pass[5] == memory2Pass[5] {
@@ -328,7 +325,6 @@ func BenchmarkFillMemory_Small(b *testing.B) {
 	const numBlocks = 256 // 256 KB
 	passes := uint32(3)
 	lanes := uint32(1)
-	segmentLength := uint32(numBlocks / SyncPoints)
 
 	memory := make([]Block, numBlocks)
 	for i := range memory[0] {
@@ -338,7 +334,7 @@ func BenchmarkFillMemory_Small(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		fillMemory(memory, passes, lanes, segmentLength)
+		fillMemory(memory, passes, lanes)
 	}
 }
 
