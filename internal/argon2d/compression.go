@@ -19,11 +19,10 @@ const (
 //
 // Algorithm per Argon2 specification:
 //  1. R = refBlock XOR prevBlock
-//  2. If withXOR: R = R XOR nextBlock
-//  3. Apply 8 rounds of Blake2b compression
-//  4. Z = R XOR prevBlock
-//  5. If withXOR: Z = Z XOR nextBlock
-//  6. nextBlock = Z
+//  2. Z = R (save copy before compression)
+//  3. Apply 8 rounds of Blake2b compression to R (permutation P)
+//  4. nextBlock = R XOR Z
+//  5. If withXOR: nextBlock = nextBlock XOR oldNextBlock
 func fillBlock(prevBlock, refBlock, nextBlock *Block, withXOR bool) {
 	var R, Z Block
 
@@ -31,35 +30,28 @@ func fillBlock(prevBlock, refBlock, nextBlock *Block, withXOR bool) {
 	R = *refBlock
 	R.XOR(prevBlock)
 
-	// Step 2: If second+ pass, XOR with current nextBlock content
-	if withXOR {
-		R.XOR(nextBlock)
-	}
-
-	// Step 3: Z = R (copy for final XOR)
+	// Step 2: Z = R (save for final XOR)
 	Z = R
 
-	// Step 4: Apply 8 rounds of Blake2b compression
+	// Step 3: Apply 8 rounds of Blake2b compression (permutation P)
 	// Each round consists of:
 	//   - Column mixing (4 applications of G)
 	//   - Row mixing (4 applications of G)
+	// Apply 8 rounds of Blake2b permutation to the block
 	for round := 0; round < 8; round++ {
-		// Apply Blake2b round to the 128 uint64 values
-		// Process in 16-value chunks (matches Blake2b state size)
-		for i := 0; i < BlockSize128; i += 16 {
-			gRound(R[i : i+16])
-		}
+		applyBlake2bRound(&R)
 	}
 
-	// Step 5: Final XOR with original values
+	// Step 4: nextBlock = R XOR Z
 	R.XOR(&Z)
 
-	// Step 6: If second+ pass, XOR with original nextBlock
+	// Step 5: If second+ pass, XOR with old nextBlock content
 	if withXOR {
-		R.XOR(nextBlock)
+		oldNext := *nextBlock
+		R.XOR(&oldNext)
 	}
 
-	// Step 7: Write result to nextBlock
+	// Step 6: Write result to nextBlock
 	*nextBlock = R
 }
 
