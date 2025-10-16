@@ -602,6 +602,10 @@ func TestArgon2d_MultiPass(t *testing.T) {
 
 // TestArgon2dCache_Basic verifies the RandomX cache generation wrapper.
 func TestArgon2dCache_Basic(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping Argon2d cache test in short mode")
+	}
+
 	key := []byte("RandomX test key")
 
 	cache := Argon2dCache(key)
@@ -626,6 +630,10 @@ func TestArgon2dCache_Basic(t *testing.T) {
 
 // TestArgon2dCache_Deterministic verifies cache generation is deterministic.
 func TestArgon2dCache_Deterministic(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping Argon2d cache test in short mode")
+	}
+
 	key := []byte("test-key")
 
 	cache1 := Argon2dCache(key)
@@ -638,6 +646,10 @@ func TestArgon2dCache_Deterministic(t *testing.T) {
 
 // TestArgon2dCache_DifferentKeys verifies different keys produce different caches.
 func TestArgon2dCache_DifferentKeys(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping Argon2d cache test in short mode")
+	}
+
 	cache1 := Argon2dCache([]byte("key1"))
 	cache2 := Argon2dCache([]byte("key2"))
 

@@ -193,6 +193,10 @@ func TestTestVector_GetMode(t *testing.T) {
 // TestOfficialVectors validates against official RandomX test vectors.
 // This is the CRITICAL test that verifies hash compatibility with the reference implementation.
 func TestOfficialVectors(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping official test vectors in short mode")
+	}
+
 	suite, err := LoadTestVectors("testdata/randomx_vectors.json")
 	if err != nil {
 		t.Fatalf("Failed to load test vectors: %v", err)
@@ -252,6 +256,10 @@ func TestOfficialVectors(t *testing.T) {
 
 // TestOfficialVectors_Determinism verifies that the same input always produces the same output.
 func TestOfficialVectors_Determinism(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test vector determinism test in short mode")
+	}
+
 	suite, err := LoadTestVectors("testdata/randomx_vectors.json")
 	if err != nil {
 		t.Fatalf("Failed to load test vectors: %v", err)

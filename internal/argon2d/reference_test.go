@@ -10,6 +10,10 @@ import (
 // The RandomX reference implementation generates cache with "test key 000".
 // The first uint64 at cache[0] should be 0x191e0e1d23c02186.
 func TestArgon2dCache_RandomXReference(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping Argon2d cache test in short mode")
+	}
+
 	key := []byte("test key 000")
 
 	cache := Argon2dCache(key)
@@ -32,6 +36,10 @@ func TestArgon2dCache_RandomXReference(t *testing.T) {
 
 // TestArgon2dParameters logs the exact parameters being used.
 func TestArgon2dParameters(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping Argon2d parameters test in short mode")
+	}
+
 	key := []byte("test key 000")
 
 	t.Logf("Argon2d parameters for RandomX:")

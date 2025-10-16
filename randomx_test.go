@@ -77,6 +77,10 @@ func TestModeString(t *testing.T) {
 
 // Test hasher creation and basic operations
 func TestHasherNew(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping hasher initialization test in short mode")
+	}
+
 	config := Config{
 		Mode:     LightMode, // Use light mode for faster tests
 		CacheKey: []byte("test seed"),
@@ -95,6 +99,10 @@ func TestHasherNew(t *testing.T) {
 
 // Test hashing functionality
 func TestHasherHash(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping hasher test in short mode")
+	}
+
 	config := Config{
 		Mode:     LightMode,
 		CacheKey: []byte("RandomX example key"),
@@ -137,6 +145,10 @@ func TestHasherHash(t *testing.T) {
 
 // Test concurrent hashing
 func TestHasherConcurrent(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping concurrent hasher test in short mode")
+	}
+
 	config := Config{
 		Mode:     LightMode,
 		CacheKey: []byte("concurrent test"),
@@ -170,6 +182,10 @@ func TestHasherConcurrent(t *testing.T) {
 
 // Test cache key update
 func TestHasherUpdateCacheKey(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping hasher test in short mode")
+	}
+
 	config := Config{
 		Mode:     LightMode,
 		CacheKey: []byte("initial key"),
@@ -211,6 +227,10 @@ func TestHasherUpdateCacheKey(t *testing.T) {
 
 // Test closing hasher
 func TestHasherClose(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping hasher test in short mode")
+	}
+
 	config := Config{
 		Mode:     LightMode,
 		CacheKey: []byte("close test"),
@@ -248,6 +268,10 @@ func TestHasherClose(t *testing.T) {
 // Without proper test vectors, there is NO GUARANTEE that this implementation
 // produces hashes compatible with Monero or other RandomX-based systems.
 func TestHasherTestVectors(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test vector validation in short mode")
+	}
+
 	tests := []struct {
 		name     string
 		key      string
@@ -307,6 +331,10 @@ func TestHasherTestVectors(t *testing.T) {
 
 // Test hasher usage after close panics
 func TestHasherPanicAfterClose(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping hasher test in short mode")
+	}
+
 	config := Config{
 		Mode:     LightMode,
 		CacheKey: []byte("panic test"),
@@ -331,6 +359,10 @@ func TestHasherPanicAfterClose(t *testing.T) {
 // TestQuickStartExample validates the hash output from the README Quick Start example.
 // This ensures the documented example produces the expected hash.
 func TestQuickStartExample(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping hasher test in short mode")
+	}
+
 	config := Config{
 		Mode:     FastMode,
 		CacheKey: []byte("RandomX example key"),

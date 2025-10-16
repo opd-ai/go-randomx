@@ -8,6 +8,10 @@ import (
 
 // TestArgon2d_DetailedLogging shows all intermediate values for debugging.
 func TestArgon2d_DetailedLogging(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping Argon2d debug test in short mode")
+	}
+
 	password := []byte("test key 000")
 	salt := []byte("RandomX\x03")
 
@@ -76,6 +80,10 @@ func TestArgon2d_H0Only(t *testing.T) {
 
 // TestArgon2d_FirstTwoBlocks tests just blocks 0 and 1 initialization.
 func TestArgon2d_FirstTwoBlocks(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping Argon2d debug test in short mode")
+	}
+
 	password := []byte("test key 000")
 	salt := []byte("RandomX\x03")
 

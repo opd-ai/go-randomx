@@ -7,6 +7,10 @@ import (
 )
 
 func TestCacheCreation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping cache creation test in short mode")
+	}
+
 	seed := []byte("test seed")
 	cache, err := newCache(seed)
 	if err != nil {
@@ -31,6 +35,10 @@ func TestCacheEmptySeed(t *testing.T) {
 }
 
 func TestCacheGetItem(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping cache test in short mode")
+	}
+
 	cache, err := newCache([]byte("test"))
 	if err != nil {
 		t.Fatalf("newCache() error = %v", err)
@@ -60,6 +68,10 @@ func TestCacheGetItem(t *testing.T) {
 }
 
 func TestCacheRelease(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping cache test in short mode")
+	}
+
 	cache, err := newCache([]byte("test"))
 	if err != nil {
 		t.Fatalf("newCache() error = %v", err)
@@ -76,6 +88,10 @@ func TestCacheRelease(t *testing.T) {
 }
 
 func TestCacheDeterminism(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping cache test in short mode")
+	}
+
 	seed := []byte("determinism test")
 
 	cache1, err := newCache(seed)
@@ -96,6 +112,10 @@ func TestCacheDeterminism(t *testing.T) {
 }
 
 func TestCacheDifferentSeeds(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping cache test in short mode")
+	}
+
 	cache1, err := newCache([]byte("seed1"))
 	if err != nil {
 		t.Fatalf("newCache() error = %v", err)
@@ -143,6 +163,10 @@ func BenchmarkCacheGetItem(b *testing.B) {
 
 // Test internal Argon2 cache generation
 func TestArgon2CacheGeneration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping slow Argon2 test in short mode")
+	}
+
 	seed := []byte("argon2 test")
 	result := internal.Argon2dCache(seed)
 
