@@ -3,30 +3,9 @@ package internal
 import (
 	"encoding/binary"
 
+	"github.com/opd-ai/go-randomx/internal/argon2d"
 	"golang.org/x/crypto/blake2b"
 )
-
-// CRITICAL ISSUE IDENTIFIED:
-//
-// RandomX requires Argon2d (data-dependent mode), but golang.org/x/crypto/argon2
-// only provides Argon2i and Argon2id. Argon2d uses data-dependent addressing which
-// provides different mixing properties required by RandomX.
-//
-// This is the ROOT CAUSE of hash mismatches with the reference implementation.
-//
-// TEMPORARY SOLUTION:
-// We use Argon2id (IDKey) as a placeholder, which provides SOME data-dependent
-// mixing in the second half of the first pass. This allows the codebase to compile
-// and provides deterministic output for testing other components.
-//
-// REQUIRED FIX:
-// Implement proper Argon2d by either:
-// 1. Porting the RandomX Argon2d implementation to pure Go
-// 2. Using a well-maintained library that supports Argon2d
-// 3. Creating minimal Argon2d implementation based on PHC reference
-//
-// Until Argon2d is properly implemented, hash outputs will NOT match the
-// RandomX reference implementation.
 
 // Argon2Config specifies Argon2 parameters for RandomX.
 type Argon2Config struct {
@@ -60,23 +39,19 @@ func Argon2d(password []byte, config Argon2Config) []byte {
 	return argon2dPlaceholder(password, config.Salt, config.Time, config.Memory, config.OutputLen)
 }
 
-// Argon2dCache generates RandomX cache using Argon2d.
+// Argon2dCache generates the RandomX cache using proper Argon2d.
+// This uses the custom Argon2d implementation in internal/argon2d which
+// provides full data-dependent addressing as required by RandomX.
 //
-// WARNING: This uses a PLACEHOLDER implementation. Hashes will NOT match
-// the RandomX reference until proper Argon2d is implemented.
-func Argon2dCache(seed []byte) []byte {
-	// RandomX cache generation parameters
-	const (
-		argonTime    = 3
-		argonMemory  = 262144 // 256 MB
-		argonThreads = 1
-		cacheSize    = 262144 // 256 KB
-	)
-
-	// Use "RandomX\x03" as salt (RandomX v1.1.x)
-	salt := []byte("RandomX\x03")
-
-	return argon2dPlaceholder(seed, salt, argonTime, argonMemory, cacheSize)
+// RandomX parameters:
+//   - Memory: 256 MB (262144 KB)
+//   - Time: 3 passes
+//   - Lanes: 1 (single-threaded)
+//   - Output: 256 KB cache
+//
+// The key is used as both password and salt, following RandomX specification.
+func Argon2dCache(key []byte) []byte {
+	return argon2d.Argon2dCache(key)
 }
 
 // argon2dPlaceholder is a TEMPORARY placeholder for Argon2d.
@@ -84,7 +59,7 @@ func Argon2dCache(seed []byte) []byte {
 //
 // This function implements a simplified memory-hard function using Blake2b
 // to allow development of other components while proper Argon2d is being implemented.
-func argon2dPlaceholder(password, salt []byte, time, memory, keyLen uint32) []byte {
+/*func argon2dPlaceholder(password, salt []byte, time, memory, keyLen uint32) []byte {
 	// Create initial Blake2b hash of password + salt
 	h, _ := blake2b.New512(nil)
 	h.Write(password)
@@ -123,4 +98,4 @@ func argon2dPlaceholder(password, salt []byte, time, memory, keyLen uint32) []by
 	}
 
 	return output[:keyLen]
-}
+}*/
