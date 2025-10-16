@@ -238,7 +238,8 @@ func Argon2dCache(key []byte) []byte {
 		cacheSize    = 262144 // 256 KB cache output
 	)
 
-	// Use key as both password and salt for cache generation
-	// (RandomX uses the block hash as the key)
-	return Argon2d(key, key, timeCost, memorySizeKB, lanes, cacheSize)
+	// RandomX uses a fixed salt: "RandomX\x03" (version 1.1.x)
+	salt := []byte("RandomX\x03")
+
+	return Argon2d(key, salt, timeCost, memorySizeKB, lanes, cacheSize)
 }
