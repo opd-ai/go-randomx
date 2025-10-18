@@ -138,9 +138,19 @@ func (vm *virtualMachine) parseConfiguration(data []byte) {
 	// Parse E register masks (used for floating-point operations)
 	// BUG FIX: E-masks are consecutive uint64 values starting at byte 8, not byte 16 with stride 16
 	// Layout: bytes 0-7 (readReg + padding), bytes 8-39 (4 E-masks), bytes 40-127 (other config)
+	const defaultEMask = uint64(0x3FFFFFFFFFFFFFFF) // Default mask to prevent infinity/NaN
+	
 	for i := 0; i < 4; i++ {
 		offset := 8 + i*8 // E masks start at byte 8, each is 8 bytes
-		vm.config.eMask[i] = binary.LittleEndian.Uint64(data[offset : offset+8])
+		mask := binary.LittleEndian.Uint64(data[offset : offset+8])
+		
+		// RandomX spec: if bit 62 (sign bit of exponent) is 0, use default mask
+		// This ensures E registers contain valid floating-point values
+		if (mask & (1 << 62)) == 0 {
+			vm.config.eMask[i] = defaultEMask
+		} else {
+			vm.config.eMask[i] = mask
+		}
 	}
 }
 
