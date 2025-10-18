@@ -326,9 +326,29 @@ func (vm *virtualMachine) executeInstruction(instr *instruction) {
 }
 
 // getMemoryAddress computes memory address for load/store operations.
+// The mod field determines which scratchpad level (L1/L2/L3) is accessed.
 func (vm *virtualMachine) getMemoryAddress(instr *instruction) uint32 {
+	// Calculate base address from src register + immediate
 	addr := vm.reg[instr.src] + uint64(instr.imm)
-	return uint32(addr % scratchpadL3Size)
+	
+	// Determine scratchpad level based on mod % 4
+	// mod % 4 == 0: L3 (full 2 MB)
+	// mod % 4 == 1: L2 (256 KB)
+	// mod % 4 == 2: L1 (16 KB)
+	// mod % 4 == 3: L2 (256 KB)
+	switch instr.mod % 4 {
+	case 0:
+		// L3 level - full scratchpad
+		return uint32(addr & scratchpadL3Mask)
+	case 1, 3:
+		// L2 level - 256 KB
+		return uint32(addr & scratchpadL2Mask)
+	case 2:
+		// L1 level - 16 KB
+		return uint32(addr & scratchpadL1Mask)
+	default:
+		return uint32(addr & scratchpadL3Mask)
+	}
 }
 
 // readMemory reads a 64-bit value from scratchpad memory.
