@@ -247,3 +247,82 @@ func (g *aesGenerator4R) setState(seed []byte) {
 	copy(g.state[:], seed)
 	g.pos = 64 // Force regeneration on next read
 }
+
+// aesHash1R implements the RandomX AesHash1R scratchpad hashing algorithm.
+// It processes the scratchpad in chunks and produces a 64-byte fingerprint.
+type aesHash1R struct {
+	state [64]byte // 4 columns of 16 bytes each
+	enc   [2]cipher.Block
+	dec   [2]cipher.Block
+}
+
+// newAesHash1R creates a new AesHash1R instance.
+func newAesHash1R() (*aesHash1R, error) {
+	h := &aesHash1R{}
+
+	var err error
+
+	// Initialize AES cipher blocks for encryption keys (columns 1, 3)
+	h.enc[0], err = aes.NewCipher(aesGenerator1RKeys[1][:])
+	if err != nil {
+		return nil, err
+	}
+	h.enc[1], err = aes.NewCipher(aesGenerator1RKeys[3][:])
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize AES cipher blocks for decryption keys (columns 0, 2)
+	h.dec[0], err = aes.NewCipher(aesGenerator1RKeys[0][:])
+	if err != nil {
+		return nil, err
+	}
+	h.dec[1], err = aes.NewCipher(aesGenerator1RKeys[2][:])
+	if err != nil {
+		return nil, err
+	}
+
+	return h, nil
+}
+
+// hash processes the scratchpad and produces a 64-byte fingerprint.
+// The algorithm XORs the scratchpad data into the state using AES rounds.
+func (h *aesHash1R) hash(scratchpad []byte) [64]byte {
+	// Initialize state to zeros
+	for i := range h.state {
+		h.state[i] = 0
+	}
+
+	// Process scratchpad in 64-byte chunks
+	// XOR each chunk into state and apply AES rounds
+	for offset := 0; offset < len(scratchpad); offset += 64 {
+		// XOR this chunk into the state
+		for i := 0; i < 64 && offset+i < len(scratchpad); i++ {
+			h.state[i] ^= scratchpad[offset+i]
+		}
+
+		// Apply AES rounds to mix the state
+		h.mixState()
+	}
+
+	return h.state
+}
+
+// mixState applies one round of AES encryption/decryption to the state.
+func (h *aesHash1R) mixState() {
+	var newState [64]byte
+
+	// Column 0 (decrypt with key0)
+	h.dec[0].Decrypt(newState[0:16], h.state[0:16])
+
+	// Column 1 (encrypt with key1)
+	h.enc[0].Encrypt(newState[16:32], h.state[16:32])
+
+	// Column 2 (decrypt with key2)
+	h.dec[1].Decrypt(newState[32:48], h.state[32:48])
+
+	// Column 3 (encrypt with key3)
+	h.enc[1].Encrypt(newState[48:64], h.state[48:64])
+
+	h.state = newState
+}
