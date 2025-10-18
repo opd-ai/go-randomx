@@ -308,6 +308,33 @@ H0 (first 32 bytes): e6fd43b3be2531b194c390843278a97a5f08884c45d9a52d7ce5550d9ab
 - Time-intensive debugging of cryptographic algorithm
 - May require domain expertise in Argon2 internals
 
+**Additional Investigation (Round 2)**:
+After user feedback requesting another attempt, conducted extensive hypothesis testing:
+
+1. **Tested Salt Variations**: 
+   - "RandomX\x03" (confirmed correct via specification) → Cache[0] = 0xc1a67314c4fb98ab
+   - key as salt → Cache[0] = 0xf6a619ebdf1352e7
+   - Both wrong (expected 0x191e0e1d23c02186)
+
+2. **Tested Output Extraction Methods**:
+   - Finalized Argon2 output (current) → 0xc1a67314c4fb98ab
+   - First 256 raw blocks → 0x5174505886f9f2e1
+   - Last block → 0xaecf2b378ff3cba9
+   - Every 1024th block → 0x5174505886f9f2e1
+   - All wrong
+
+3. **Tested Byte Order**: 
+   - Little-endian: 0xc1a67314c4fb98ab
+   - Big-endian: 0xab98fbc41473a6c1
+   - Neither matches expected 0x191e0e1d23c02186
+
+4. **Conclusion**: 
+   - The bug is NOT in salt configuration or output extraction
+   - The bug is IN the Argon2d algorithm implementation itself
+   - First memory block produces 0x5174505886f9f2e1 instead of 0x191e0e1d23c02186
+   - This indicates a fundamental issue in fillMemory, fillBlock, or block initialization
+   - All component tests pass, suggesting subtle integration bug in how components interact
+
 ---
 
 ## Implementation Gaps Resolution Summary
