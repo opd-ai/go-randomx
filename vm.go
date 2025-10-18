@@ -128,15 +128,18 @@ func (vm *virtualMachine) parseConfiguration(data []byte) {
 	}
 
 	// Parse readReg values (which registers to use for address calculations)
-	// These determine which registers are used for spAddr0/spAddr1 XOR operations
-	vm.config.readReg0 = uint8(binary.LittleEndian.Uint32(data[0:4]) % 8)
-	vm.config.readReg1 = uint8(binary.LittleEndian.Uint32(data[4:8]) % 8)
-	vm.config.readReg2 = uint8(binary.LittleEndian.Uint32(data[8:12]) % 8)
-	vm.config.readReg3 = uint8(binary.LittleEndian.Uint32(data[12:16]) % 8)
+	// RandomX spec: take individual bytes and mask with 7 to get register index (0-7)
+	// BUG FIX: Was incorrectly reading uint32 values, should read individual bytes
+	vm.config.readReg0 = data[0] & 7
+	vm.config.readReg1 = data[1] & 7
+	vm.config.readReg2 = data[2] & 7
+	vm.config.readReg3 = data[3] & 7
 
 	// Parse E register masks (used for floating-point operations)
+	// BUG FIX: E-masks are consecutive uint64 values starting at byte 8, not byte 16 with stride 16
+	// Layout: bytes 0-7 (readReg + padding), bytes 8-39 (4 E-masks), bytes 40-127 (other config)
 	for i := 0; i < 4; i++ {
-		offset := 16 + i*16 // E masks start at byte 16, 16 bytes each
+		offset := 8 + i*8 // E masks start at byte 8, each is 8 bytes
 		vm.config.eMask[i] = binary.LittleEndian.Uint64(data[offset : offset+8])
 	}
 }
