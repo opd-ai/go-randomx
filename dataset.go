@@ -81,46 +81,58 @@ func (ds *dataset) generate(c *cache) error {
 }
 
 // generateItem creates a single dataset item using superscalar hash.
-// This implements the RandomX dataset item generation algorithm.
+// This implements the RandomX initDatasetItem function from the C++ reference.
 func (ds *dataset) generateItem(c *cache, itemNumber uint64, output []byte) {
-	// Initialize register file with item number
+	// Superscalar constants (from RandomX C++ reference)
+	const (
+		superscalarMul0 = 6364136223846793005
+		superscalarAdd1 = 9298411001130361340
+		superscalarAdd2 = 12065312585734608966
+		superscalarAdd3 = 9306329213124626780
+		superscalarAdd4 = 5281919268842080866
+		superscalarAdd5 = 10536153434571861004
+		superscalarAdd6 = 3398623926847679864
+		superscalarAdd7 = 9549104520008361294
+	)
+	
+	// Initialize register file with specific constants based on item number
 	var registers [8]uint64
-	registers[0] = itemNumber
-
-	// Mix with cache items using superscalar program
-	const iterations = 8
-	for i := 0; i < iterations; i++ {
-		// Get cache item based on current register state
-		cacheIndex := uint32(registers[0] % cacheItems)
-		cacheItem := c.getItem(cacheIndex)
-
-		// Mix cache item into registers
+	registerValue := itemNumber
+	registers[0] = (itemNumber + 1) * superscalarMul0
+	registers[1] = registers[0] ^ superscalarAdd1
+	registers[2] = registers[0] ^ superscalarAdd2
+	registers[3] = registers[0] ^ superscalarAdd3
+	registers[4] = registers[0] ^ superscalarAdd4
+	registers[5] = registers[0] ^ superscalarAdd5
+	registers[6] = registers[0] ^ superscalarAdd6
+	registers[7] = registers[0] ^ superscalarAdd7
+	
+	// Execute 8 superscalar programs (one per cache access)
+	for i := 0; i < cacheAccesses; i++ {
+		// Get cache block based on current register value
+		// Mask to cache line size (64 bytes per item)
+		const mask = cacheItems - 1
+		cacheIndex := uint32(registerValue & mask)
+		mixBlock := c.getItem(cacheIndex)
+		
+		// Execute the superscalar program on the register file
+		prog := c.programs[i]
+		executeSuperscalar(&registers, prog, c.reciprocals)
+		
+		// XOR cache block into registers
 		for r := 0; r < 8; r++ {
-			val := binary.LittleEndian.Uint64(cacheItem[r*8 : r*8+8])
+			val := binary.LittleEndian.Uint64(mixBlock[r*8 : r*8+8])
 			registers[r] ^= val
 		}
-
-		// Apply simple mixing function
-		for r := 0; r < 8; r++ {
-			registers[r] = mixRegister(registers[r], uint64(i))
-		}
+		
+		// Next cache address is determined by the address register
+		registerValue = registers[prog.addressReg]
 	}
-
-	// Write final register state to output
+	
+	// Output is the final register state (64 bytes)
 	for r := 0; r < 8; r++ {
 		binary.LittleEndian.PutUint64(output[r*8:r*8+8], registers[r])
 	}
-}
-
-// mixRegister applies a mixing transformation to a register value.
-func mixRegister(val uint64, iteration uint64) uint64 {
-	// Simple mixing using prime multipliers and rotation
-	val ^= iteration
-	val *= 0x9e3779b97f4a7c15 // Knuth's golden ratio
-	val ^= val >> 33
-	val *= 0xbf58476d1ce4e5b9
-	val ^= val >> 29
-	return val
 }
 
 // release frees the dataset resources.
