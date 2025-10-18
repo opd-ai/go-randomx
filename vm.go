@@ -290,29 +290,60 @@ func (vm *virtualMachine) mixDataset() {
 }
 
 // computeDatasetItem generates a single dataset item on-demand from the cache.
-// This is used in light mode and implements the same algorithm as dataset generation.
+// This is used in light mode and implements dataset item generation.
+// 
+// NOTE: This is a simplified implementation that doesn't use superscalar programs.
+// For full RandomX compatibility, superscalar program generation and execution
+// would be required. This implementation uses the constants and structure from
+// the RandomX specification to approximate the correct behavior.
 func (vm *virtualMachine) computeDatasetItem(itemNumber uint64, output []byte) {
-	// Initialize register file with item number
+	// RandomX constants for dataset item initialization (from spec)
+	const (
+		superscalarMul0  = 6364136223846793005
+		superscalarAdd1  = 9298411001130361340
+		superscalarAdd2  = 12065312585734608966
+		superscalarAdd3  = 9306329213124626780
+		superscalarAdd4  = 5281919268842080866
+		superscalarAdd5  = 10536153434571861004
+		superscalarAdd6  = 3398623926847679864
+		superscalarAdd7  = 9549104520008361294
+	)
+	
+	// Initialize register file according to RandomX spec
 	var registers [8]uint64
-	registers[0] = itemNumber
+	registers[0] = (itemNumber + 1) * superscalarMul0
+	registers[1] = registers[0] ^ superscalarAdd1
+	registers[2] = registers[0] ^ superscalarAdd2
+	registers[3] = registers[0] ^ superscalarAdd3
+	registers[4] = registers[0] ^ superscalarAdd4
+	registers[5] = registers[0] ^ superscalarAdd5
+	registers[6] = registers[0] ^ superscalarAdd6
+	registers[7] = registers[0] ^ superscalarAdd7
 
 	// Mix with cache items (8 iterations as per RandomX spec)
+	registerValue := itemNumber
 	const iterations = 8
+	
 	for i := 0; i < iterations; i++ {
-		// Get cache item based on current register state
-		cacheIndex := uint32(registers[0] % cacheItems)
+		// Get cache item based on register value
+		cacheIndex := uint32(registerValue % cacheItems)
 		cacheItem := vm.c.getItem(cacheIndex)
 
-		// Mix cache item into registers
+		// XOR cache item into registers
 		for r := 0; r < 8; r++ {
 			val := binary.LittleEndian.Uint64(cacheItem[r*8 : r*8+8])
 			registers[r] ^= val
 		}
-
-		// Apply mixing function
+		
+		// Apply simple mixing to simulate superscalar program effect
+		// This is a placeholder for proper superscalar program execution
 		for r := 0; r < 8; r++ {
 			registers[r] = mixRegister(registers[r], uint64(i))
 		}
+		
+		// Update register value for next cache access
+		// Use r0 as the address register (simplified)
+		registerValue = registers[0]
 	}
 
 	// Write final register state to output
