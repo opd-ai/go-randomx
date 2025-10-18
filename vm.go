@@ -180,13 +180,15 @@ func (vm *virtualMachine) executeIteration(prog *program) {
 
 	// Step 3: Read 64 bytes from Scratchpad[spAddr1] to initialize f0-f3 and e0-e3
 	for i := 0; i < 4; i++ {
-		// Load f registers (first 32 bytes)
+		// Load f registers (first 32 bytes) - apply float mask
 		fVal := vm.readMemory(vm.spAddr1 + uint32(i*8))
-		vm.regF[i] = uint64ToFloat(fVal)
+		vm.regF[i] = maskFloat(math.Float64frombits(fVal))
 
-		// Load e registers (next 32 bytes)
+		// Load e registers (next 32 bytes) - apply eMask from configuration
 		eVal := vm.readMemory(vm.spAddr1 + 32 + uint32(i*8))
-		vm.regE[i] = uint64ToFloat(eVal)
+		// Apply eMask to limit exponent range
+		eValMasked := eVal & vm.config.eMask[i]
+		vm.regE[i] = maskFloat(math.Float64frombits(eValMasked))
 	}
 
 	// Step 4: Execute all 256 instructions in the program
