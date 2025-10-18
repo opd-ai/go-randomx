@@ -252,7 +252,7 @@ func TestBlake2bLong_KnownVector(t *testing.T) {
 	// Simple test: empty input, 32 bytes output
 	// We can manually verify this matches standard Blake2b behavior
 	result := Blake2bLong([]byte{}, 32)
-	
+
 	if len(result) != 32 {
 		t.Fatalf("length = %d, want 32", len(result))
 	}
@@ -260,7 +260,7 @@ func TestBlake2bLong_KnownVector(t *testing.T) {
 	// The empty input with 32-byte output should match Blake2b-256 of empty input
 	// Blake2b-256("") = 0e5751c026e543b2e8ab2eb06099daa1d1e5df47778f7787faab45cdf12fe3a8
 	expected, _ := hex.DecodeString("0e5751c026e543b2e8ab2eb06099daa1d1e5df47778f7787faab45cdf12fe3a8")
-	
+
 	if !bytes.Equal(result, expected) {
 		t.Errorf("Blake2bLong([], 32) mismatch\ngot:  %x\nwant: %x", result, expected)
 	}
