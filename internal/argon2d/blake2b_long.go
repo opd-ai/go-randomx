@@ -39,6 +39,12 @@ func Blake2bLong(input []byte, outlen uint32) []byte {
 		return nil
 	}
 
+	// Prepare input with 4-byte little-endian length prefix
+	// This is required by Argon2 spec for ALL output lengths
+	inputWithLen := make([]byte, 4+len(input))
+	binary.LittleEndian.PutUint32(inputWithLen[0:4], outlen)
+	copy(inputWithLen[4:], input)
+
 	// Simple case: output fits in a single Blake2b hash
 	if outlen <= 64 {
 		h, err := blake2b.New(int(outlen), nil)
@@ -46,21 +52,16 @@ func Blake2bLong(input []byte, outlen uint32) []byte {
 			// This should never happen for valid output lengths (1-64)
 			panic("blake2b.New failed with valid length: " + err.Error())
 		}
-		h.Write(input)
+		h.Write(inputWithLen)
 		return h.Sum(nil)
 	}
 
 	// Extended output case: Chain Blake2b hashes together
 	//
-	// Create initial hash V₁ = Blake2b(input || uint32_le(outlen), 64)
+	// Create initial hash V₁ = Blake2b(uint32_le(outlen) || input, 64)
 	// The output length is prepended as a 4-byte little-endian value
 	// as specified in the Argon2 spec.
 	output := make([]byte, outlen)
-
-	// Prepare input with length prefix
-	inputWithLen := make([]byte, len(input)+4)
-	binary.LittleEndian.PutUint32(inputWithLen, outlen)
-	copy(inputWithLen[4:], input)
 
 	// Generate first 64-byte block
 	h, _ := blake2b.New512(nil) // 512 bits = 64 bytes
@@ -71,15 +72,32 @@ func Blake2bLong(input []byte, outlen uint32) []byte {
 	copied := copy(output, v[:32])
 
 	// Generate remaining blocks by repeatedly hashing the previous block
-	// Each iteration produces 64 bytes, we take what we need
+	// Each iteration produces 64 bytes, but we only use 32 bytes at a time
+	// The last iteration must produce exactly the remaining bytes (not 64)
 	for copied < int(outlen) {
-		h.Reset()
-		h.Write(v)
-		v = h.Sum(nil)
-
-		// Copy up to 64 bytes or whatever remains
-		n := copy(output[copied:], v)
-		copied += n
+		remaining := int(outlen) - copied
+		
+		// Determine output size for this iteration
+		var outSize int
+		var toCopy int
+		if remaining > 64 {
+			// More than 64 bytes remain: produce 64, copy 32
+			outSize = 64
+			toCopy = 32
+		} else {
+			// 64 or fewer bytes remain: produce exactly what's needed
+			outSize = remaining
+			toCopy = remaining
+		}
+		
+		// Hash previous block to produce new block
+		h2, _ := blake2b.New(outSize, nil)
+		h2.Write(v)
+		v = h2.Sum(nil)
+		
+		// Copy bytes to output
+		copy(output[copied:], v[:toCopy])
+		copied += toCopy
 	}
 
 	return output
