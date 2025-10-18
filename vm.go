@@ -317,49 +317,10 @@ func (vm *virtualMachine) finalize() [32]byte {
 	return internal.Blake2b256(combined)
 }
 
-// executeInstruction executes a single VM instruction.
+// executeInstruction executes a single VM instruction using the full RandomX instruction set.
 func (vm *virtualMachine) executeInstruction(instr *instruction) {
-	// Decode destination and source registers
-	dst := instr.dst & 0x07
-	src := instr.src & 0x07
-
-	// Execute based on opcode
-	switch instr.opcode % 16 {
-	case 0: // ADD
-		vm.reg[dst] += vm.reg[src]
-	case 1: // SUB
-		vm.reg[dst] -= vm.reg[src]
-	case 2: // MUL
-		vm.reg[dst] *= vm.reg[src]
-	case 3: // XOR
-		vm.reg[dst] ^= vm.reg[src]
-	case 4: // ROR (rotate right)
-		vm.reg[dst] = rotateRight64(vm.reg[dst], uint(vm.reg[src]&63))
-	case 5: // LOAD
-		addr := vm.getMemoryAddress(instr)
-		vm.reg[dst] = vm.readMemory(addr)
-	case 6: // STORE
-		addr := vm.getMemoryAddress(instr)
-		vm.writeMemory(addr, vm.reg[src])
-	case 7: // ADD immediate
-		vm.reg[dst] += uint64(instr.imm)
-	case 8: // SUB immediate
-		vm.reg[dst] -= uint64(instr.imm)
-	case 9: // MUL immediate
-		vm.reg[dst] *= uint64(instr.imm)
-	case 10: // XOR immediate
-		vm.reg[dst] ^= uint64(instr.imm)
-	case 11: // ROR immediate
-		vm.reg[dst] = rotateRight64(vm.reg[dst], uint(instr.imm&63))
-	case 12: // AND
-		vm.reg[dst] &= vm.reg[src]
-	case 13: // OR
-		vm.reg[dst] |= vm.reg[src]
-	case 14: // FPADD (floating point add)
-		vm.reg[dst] = floatToUint64(uint64ToFloat(vm.reg[dst]) + uint64ToFloat(vm.reg[src]))
-	case 15: // FPMUL (floating point multiply)
-		vm.reg[dst] = floatToUint64(uint64ToFloat(vm.reg[dst]) * uint64ToFloat(vm.reg[src]))
-	}
+	// Use the full instruction executor from instructions.go
+	vm.executeInstructionFull(instr)
 }
 
 // getMemoryAddress computes memory address for load/store operations.
