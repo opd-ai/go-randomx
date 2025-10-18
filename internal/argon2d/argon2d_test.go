@@ -610,9 +610,10 @@ func TestArgon2dCache_Basic(t *testing.T) {
 
 	cache := Argon2dCache(key)
 
-	// RandomX cache should be 256 KB = 262144 bytes
-	if len(cache) != 262144 {
-		t.Errorf("Argon2dCache produced %d bytes, expected 262144", len(cache))
+	// RandomX cache should be 256 MB = 262144 blocks * 1024 bytes = 268435456 bytes
+	expectedSize := 262144 * 1024
+	if len(cache) != expectedSize {
+		t.Errorf("Argon2dCache produced %d bytes, expected %d", len(cache), expectedSize)
 	}
 
 	// Should not be all zeros

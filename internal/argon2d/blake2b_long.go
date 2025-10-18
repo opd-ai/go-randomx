@@ -73,17 +73,29 @@ func Blake2bLong(input []byte, outlen uint32) []byte {
 
 	// Generate remaining blocks by repeatedly hashing the previous block
 	// Each iteration produces 64 bytes, but we only use 32 bytes at a time
+	// The last iteration must produce exactly the remaining bytes (not 64)
 	for copied < int(outlen) {
-		h.Reset()
-		h.Write(v)
-		v = h.Sum(nil)
-
-		// Copy up to 32 bytes or whatever remains
-		// The C++ implementation copies BLAKE2B_OUTBYTES / 2 = 32 bytes at a time
-		toCopy := 32
-		if int(outlen)-copied < toCopy {
-			toCopy = int(outlen) - copied
+		remaining := int(outlen) - copied
+		
+		// Determine output size for this iteration
+		var outSize int
+		var toCopy int
+		if remaining > 64 {
+			// More than 64 bytes remain: produce 64, copy 32
+			outSize = 64
+			toCopy = 32
+		} else {
+			// 64 or fewer bytes remain: produce exactly what's needed
+			outSize = remaining
+			toCopy = remaining
 		}
+		
+		// Hash previous block to produce new block
+		h2, _ := blake2b.New(outSize, nil)
+		h2.Write(v)
+		v = h2.Sum(nil)
+		
+		// Copy bytes to output
 		copy(output[copied:], v[:toCopy])
 		copied += toCopy
 	}

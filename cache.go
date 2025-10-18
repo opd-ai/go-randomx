@@ -7,10 +7,11 @@ import (
 )
 
 const (
-	// Cache size in bytes (256 KB, contains 32768 64-byte items)
-	cacheSize = 262144
+	// Cache size in bytes (256 MB = 262144 blocks * 1024 bytes)
+	// RandomX uses the entire Argon2d memory as the cache
+	cacheSize = 262144 * 1024
 
-	// Number of cache items
+	// Number of cache items (each item is 64 bytes)
 	cacheItems = cacheSize / 64
 )
 
@@ -18,7 +19,7 @@ const (
 // The cache is used to generate dataset items in light mode or to
 // initialize the full dataset in fast mode.
 type cache struct {
-	data []byte // Raw cache data (256 KB)
+	data []byte // Raw cache data (256 MB)
 	key  []byte // Cache key (seed) used to generate this cache
 }
 
