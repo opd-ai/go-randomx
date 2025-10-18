@@ -128,16 +128,29 @@ func (vm *virtualMachine) parseConfiguration(data []byte) {
 	}
 
 	// Parse readReg values (which registers to use for address calculations)
-	// These determine which registers are used for spAddr0/spAddr1 XOR operations
-	vm.config.readReg0 = uint8(binary.LittleEndian.Uint32(data[0:4]) % 8)
-	vm.config.readReg1 = uint8(binary.LittleEndian.Uint32(data[4:8]) % 8)
-	vm.config.readReg2 = uint8(binary.LittleEndian.Uint32(data[8:12]) % 8)
-	vm.config.readReg3 = uint8(binary.LittleEndian.Uint32(data[12:16]) % 8)
+	// RandomX spec: take individual bytes and mask with 7 to get register index (0-7)
+	// BUG FIX: Was incorrectly reading uint32 values, should read individual bytes
+	vm.config.readReg0 = data[0] & 7
+	vm.config.readReg1 = data[1] & 7
+	vm.config.readReg2 = data[2] & 7
+	vm.config.readReg3 = data[3] & 7
 
 	// Parse E register masks (used for floating-point operations)
+	// BUG FIX: E-masks are consecutive uint64 values starting at byte 8, not byte 16 with stride 16
+	// Layout: bytes 0-7 (readReg + padding), bytes 8-39 (4 E-masks), bytes 40-127 (other config)
+	const defaultEMask = uint64(0x3FFFFFFFFFFFFFFF) // Default mask to prevent infinity/NaN
+	
 	for i := 0; i < 4; i++ {
-		offset := 16 + i*16 // E masks start at byte 16, 16 bytes each
-		vm.config.eMask[i] = binary.LittleEndian.Uint64(data[offset : offset+8])
+		offset := 8 + i*8 // E masks start at byte 8, each is 8 bytes
+		mask := binary.LittleEndian.Uint64(data[offset : offset+8])
+		
+		// RandomX spec: if bit 62 (sign bit of exponent) is 0, use default mask
+		// This ensures E registers contain valid floating-point values
+		if (mask & (1 << 62)) == 0 {
+			vm.config.eMask[i] = defaultEMask
+		} else {
+			vm.config.eMask[i] = mask
+		}
 	}
 }
 
@@ -251,28 +264,92 @@ func (vm *virtualMachine) serializeRegisters() []byte {
 // mixDataset mixes dataset items into the register file.
 func (vm *virtualMachine) mixDataset() {
 	// Use mx to select dataset item
-	var itemData []byte
+	var itemData [64]byte
 
 	if vm.ds != nil {
 		// Fast mode: read from dataset
 		index := vm.mx % datasetItems
-		itemData = vm.ds.getItem(index)
+		copy(itemData[:], vm.ds.getItem(index))
 	} else if vm.c != nil {
-		// Light mode: compute item from cache
-		index := uint32(vm.mx % cacheItems)
-		itemData = vm.c.getItem(index)
+		// Light mode: compute dataset item on-demand from cache
+		// BUG FIX: Was incorrectly returning raw cache item instead of computing dataset item
+		index := vm.mx % datasetItems
+		vm.computeDatasetItem(index, itemData[:])
 	} else {
 		return
 	}
 
 	// XOR dataset item (64 bytes) into registers r0-r7
-	for i := 0; i < 8 && i*8 < len(itemData); i++ {
+	for i := 0; i < 8; i++ {
 		val := binary.LittleEndian.Uint64(itemData[i*8 : i*8+8])
 		vm.reg[i] ^= val
 	}
 
 	// Update ma for next iteration
 	vm.ma = vm.mx
+}
+
+// computeDatasetItem generates a single dataset item on-demand from the cache.
+// This is used in light mode and implements dataset item generation.
+// 
+// NOTE: This is a simplified implementation that doesn't use superscalar programs.
+// For full RandomX compatibility, superscalar program generation and execution
+// would be required. This implementation uses the constants and structure from
+// the RandomX specification to approximate the correct behavior.
+func (vm *virtualMachine) computeDatasetItem(itemNumber uint64, output []byte) {
+	// RandomX constants for dataset item initialization (from spec)
+	const (
+		superscalarMul0  = 6364136223846793005
+		superscalarAdd1  = 9298411001130361340
+		superscalarAdd2  = 12065312585734608966
+		superscalarAdd3  = 9306329213124626780
+		superscalarAdd4  = 5281919268842080866
+		superscalarAdd5  = 10536153434571861004
+		superscalarAdd6  = 3398623926847679864
+		superscalarAdd7  = 9549104520008361294
+	)
+	
+	// Initialize register file according to RandomX spec
+	var registers [8]uint64
+	registers[0] = (itemNumber + 1) * superscalarMul0
+	registers[1] = registers[0] ^ superscalarAdd1
+	registers[2] = registers[0] ^ superscalarAdd2
+	registers[3] = registers[0] ^ superscalarAdd3
+	registers[4] = registers[0] ^ superscalarAdd4
+	registers[5] = registers[0] ^ superscalarAdd5
+	registers[6] = registers[0] ^ superscalarAdd6
+	registers[7] = registers[0] ^ superscalarAdd7
+
+	// Mix with cache items (8 iterations as per RandomX spec)
+	registerValue := itemNumber
+	const iterations = 8
+	
+	for i := 0; i < iterations; i++ {
+		// Get cache item based on register value
+		cacheIndex := uint32(registerValue % cacheItems)
+		cacheItem := vm.c.getItem(cacheIndex)
+
+		// XOR cache item into registers
+		for r := 0; r < 8; r++ {
+			val := binary.LittleEndian.Uint64(cacheItem[r*8 : r*8+8])
+			registers[r] ^= val
+		}
+		
+		// Apply simple mixing to simulate superscalar program effect
+		// This is a placeholder for proper superscalar program execution
+		for r := 0; r < 8; r++ {
+			registers[r] = mixRegister(registers[r], uint64(i))
+		}
+		
+		// Update register value for next cache access
+		// Use r0 as the address register (simplified)
+		registerValue = registers[0]
+	}
+
+	// Write final register state to output
+	for r := 0; r < 8; r++ {
+		binary.LittleEndian.PutUint64(output[r*8:r*8+8], registers[r])
+	}
 }
 
 // finalize produces the final hash output using the RandomX finalization algorithm.
