@@ -264,28 +264,61 @@ func (vm *virtualMachine) serializeRegisters() []byte {
 // mixDataset mixes dataset items into the register file.
 func (vm *virtualMachine) mixDataset() {
 	// Use mx to select dataset item
-	var itemData []byte
+	var itemData [64]byte
 
 	if vm.ds != nil {
 		// Fast mode: read from dataset
 		index := vm.mx % datasetItems
-		itemData = vm.ds.getItem(index)
+		copy(itemData[:], vm.ds.getItem(index))
 	} else if vm.c != nil {
-		// Light mode: compute item from cache
-		index := uint32(vm.mx % cacheItems)
-		itemData = vm.c.getItem(index)
+		// Light mode: compute dataset item on-demand from cache
+		// BUG FIX: Was incorrectly returning raw cache item instead of computing dataset item
+		index := vm.mx % datasetItems
+		vm.computeDatasetItem(index, itemData[:])
 	} else {
 		return
 	}
 
 	// XOR dataset item (64 bytes) into registers r0-r7
-	for i := 0; i < 8 && i*8 < len(itemData); i++ {
+	for i := 0; i < 8; i++ {
 		val := binary.LittleEndian.Uint64(itemData[i*8 : i*8+8])
 		vm.reg[i] ^= val
 	}
 
 	// Update ma for next iteration
 	vm.ma = vm.mx
+}
+
+// computeDatasetItem generates a single dataset item on-demand from the cache.
+// This is used in light mode and implements the same algorithm as dataset generation.
+func (vm *virtualMachine) computeDatasetItem(itemNumber uint64, output []byte) {
+	// Initialize register file with item number
+	var registers [8]uint64
+	registers[0] = itemNumber
+
+	// Mix with cache items (8 iterations as per RandomX spec)
+	const iterations = 8
+	for i := 0; i < iterations; i++ {
+		// Get cache item based on current register state
+		cacheIndex := uint32(registers[0] % cacheItems)
+		cacheItem := vm.c.getItem(cacheIndex)
+
+		// Mix cache item into registers
+		for r := 0; r < 8; r++ {
+			val := binary.LittleEndian.Uint64(cacheItem[r*8 : r*8+8])
+			registers[r] ^= val
+		}
+
+		// Apply mixing function
+		for r := 0; r < 8; r++ {
+			registers[r] = mixRegister(registers[r], uint64(i))
+		}
+	}
+
+	// Write final register state to output
+	for r := 0; r < 8; r++ {
+		binary.LittleEndian.PutUint64(output[r*8:r*8+8], registers[r])
+	}
 }
 
 // finalize produces the final hash output using the RandomX finalization algorithm.
