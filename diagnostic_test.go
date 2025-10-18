@@ -198,16 +198,18 @@ func TestConfigurationParsing(t *testing.T) {
 
 	// Create test configuration data
 	configData := make([]byte, 128)
-	// Set readReg values
-	binary.LittleEndian.PutUint32(configData[0:4], 3)    // readReg0 = 3 % 8 = 3
-	binary.LittleEndian.PutUint32(configData[4:8], 10)   // readReg1 = 10 % 8 = 2
-	binary.LittleEndian.PutUint32(configData[8:12], 15)  // readReg2 = 15 % 8 = 7
-	binary.LittleEndian.PutUint32(configData[12:16], 22) // readReg3 = 22 % 8 = 6
+	// Set readReg values (individual bytes, masked with 7)
+	configData[0] = 3  // readReg0 = 3 & 7 = 3
+	configData[1] = 10 // readReg1 = 10 & 7 = 2
+	configData[2] = 15 // readReg2 = 15 & 7 = 7
+	configData[3] = 22 // readReg3 = 22 & 7 = 6
 
-	// Set E masks
+	// Set E masks (consecutive uint64 values starting at byte 8)
+	// Set with high bit (bit 62) set to avoid default mask substitution
 	for i := 0; i < 4; i++ {
-		offset := 16 + i*16
-		binary.LittleEndian.PutUint64(configData[offset:offset+8], uint64(i*1000))
+		offset := 8 + i*8
+		val := uint64(i*1000) | (1 << 62) // Set bit 62 to use parsed value
+		binary.LittleEndian.PutUint64(configData[offset:offset+8], val)
 	}
 
 	vm.parseConfiguration(configData)
@@ -227,7 +229,7 @@ func TestConfigurationParsing(t *testing.T) {
 	}
 
 	for i := 0; i < 4; i++ {
-		expected := uint64(i * 1000)
+		expected := uint64(i*1000) | (1 << 62) // Expected has bit 62 set
 		if vm.config.eMask[i] != expected {
 			t.Errorf("eMask[%d]: got %d, expected %d", i, vm.config.eMask[i], expected)
 		}
