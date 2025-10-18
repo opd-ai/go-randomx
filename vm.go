@@ -7,14 +7,31 @@ import (
 	"github.com/opd-ai/go-randomx/internal"
 )
 
+// vmConfig holds configuration data parsed from AesGenerator4R output.
+type vmConfig struct {
+	readReg0 uint8    // Register for spAddr0 XOR
+	readReg1 uint8    // Register for spAddr1 XOR
+	readReg2 uint8    // Register for mx XOR
+	readReg3 uint8    // Register for mx XOR
+	eMask    [4]uint64 // Masks for E registers
+}
+
 // virtualMachine implements the RandomX virtual machine.
 type virtualMachine struct {
-	reg [8]uint64 // Integer register file (r0-r7)
-	mem []byte    // Scratchpad memory (2 MB)
-	ds  *dataset  // Dataset reference (fast mode)
-	c   *cache    // Cache reference (light mode)
-	ma  uint64    // Memory address register
-	mx  uint64    // Memory multiplier
+	reg  [8]uint64 // Integer register file (r0-r7)
+	regF [4]float64 // Floating-point register file (f0-f3)
+	regE [4]float64 // E register file (e0-e3)
+	mem  []byte     // Scratchpad memory (2 MB)
+	ds   *dataset   // Dataset reference (fast mode)
+	c    *cache     // Cache reference (light mode)
+	ma   uint64     // Memory address register
+	mx   uint64     // Memory multiplier
+
+	// Program generation and configuration
+	gen4     *aesGenerator4R // Generator for programs
+	config   vmConfig        // Current configuration
+	spAddr0  uint32          // Scratchpad address 0
+	spAddr1  uint32          // Scratchpad address 1
 }
 
 // init initializes the VM with dataset or cache.
@@ -29,6 +46,12 @@ func (vm *virtualMachine) reset() {
 	for i := range vm.reg {
 		vm.reg[i] = 0
 	}
+	for i := range vm.regF {
+		vm.regF[i] = 0
+	}
+	for i := range vm.regE {
+		vm.regE[i] = 0
+	}
 	if vm.mem != nil {
 		for i := range vm.mem {
 			vm.mem[i] = 0
@@ -36,6 +59,8 @@ func (vm *virtualMachine) reset() {
 	}
 	vm.ma = 0
 	vm.mx = 0
+	vm.spAddr0 = 0
+	vm.spAddr1 = 0
 }
 
 // run executes the RandomX algorithm on the input.
@@ -43,106 +68,253 @@ func (vm *virtualMachine) run(input []byte) [32]byte {
 	// Initialize VM state from input
 	vm.initialize(input)
 
-	// Execute RandomX program iterations
-	const iterations = 8
-	for i := 0; i < iterations; i++ {
-		// Generate program for this iteration
-		prog := generateProgram(input)
+	// RandomX algorithm: 8 programs, each executed 2048 times
+	const (
+		programCount      = 8
+		programIterations = 2048
+	)
 
-		// Execute the program
-		prog.execute(vm)
+	for progNum := 0; progNum < programCount; progNum++ {
+		// Generate new program from AesGenerator4R
+		prog := vm.generateProgram()
 
-		// Mix dataset/cache into registers
-		vm.mixDataset()
+		// Execute this program 2048 times
+		for iter := 0; iter < programIterations; iter++ {
+			vm.executeIteration(prog)
+		}
+
+		// Update generator state for next program
+		// Hash the register file and use as new generator state
+		regData := vm.serializeRegisters()
+		newState := internal.Blake2b512(regData)
+		vm.gen4.setState(newState[:])
 	}
 
 	// Finalize hash
 	return vm.finalize()
 }
 
-// initialize sets up the VM state from input data.
+// initialize sets up the VM state from input data using the RandomX algorithm.
 func (vm *virtualMachine) initialize(input []byte) {
-	// Hash input to get initial state
+	// Step 1: Hash input to get initial state
 	hash := internal.Blake2b512(input)
 
-	// Initialize registers from hash
-	for i := 0; i < 8; i++ {
-		vm.reg[i] = binary.LittleEndian.Uint64(hash[i*8 : i*8+8])
+	// Step 2: Create AesGenerator1R from hash
+	gen1, err := newAesGenerator1R(hash[:])
+	if err != nil {
+		panic("failed to create AesGenerator1R: " + err.Error())
 	}
 
-	// Initialize scratchpad from registers
-	vm.fillScratchpad()
+	// Step 3: Fill scratchpad (2 MB) from generator
+	// Ensure mem is allocated
+	if len(vm.mem) == 0 {
+		vm.mem = make([]byte, scratchpadL3Size)
+	}
+	gen1.getBytes(vm.mem)
 
-	// Set memory access parameters
-	vm.ma = vm.reg[0]
-	vm.mx = vm.reg[1] | 0x01 // Ensure odd for proper mixing
+	// Step 4: Create AesGenerator4R from gen1 state for program generation
+	gen4, err := newAesGenerator4R(gen1.state[:])
+	if err != nil {
+		panic("failed to create AesGenerator4R: " + err.Error())
+	}
+	vm.gen4 = gen4
 }
 
-// fillScratchpad initializes scratchpad memory.
-func (vm *virtualMachine) fillScratchpad() {
-	// Fill scratchpad with AES encryption of register state
-	if len(vm.mem) < scratchpadL3Size {
-		return
+// parseConfiguration parses 128 bytes of configuration data from AesGenerator4R.
+// This sets up the VM's configuration according to RandomX spec Table 4.5.1.
+func (vm *virtualMachine) parseConfiguration(data []byte) {
+	if len(data) < 128 {
+		panic("configuration data must be at least 128 bytes")
 	}
 
-	// Use registers as AES keys
-	key := make([]byte, 32)
+	// Parse readReg values (which registers to use for address calculations)
+	// These determine which registers are used for spAddr0/spAddr1 XOR operations
+	vm.config.readReg0 = uint8(binary.LittleEndian.Uint32(data[0:4]) % 8)
+	vm.config.readReg1 = uint8(binary.LittleEndian.Uint32(data[4:8]) % 8)
+	vm.config.readReg2 = uint8(binary.LittleEndian.Uint32(data[8:12]) % 8)
+	vm.config.readReg3 = uint8(binary.LittleEndian.Uint32(data[12:16]) % 8)
+
+	// Parse E register masks (used for floating-point operations)
 	for i := 0; i < 4; i++ {
-		binary.LittleEndian.PutUint64(key[i*8:], vm.reg[i])
+		offset := 16 + i*16 // E masks start at byte 16, 16 bytes each
+		vm.config.eMask[i] = binary.LittleEndian.Uint64(data[offset : offset+8])
+	}
+}
+
+// generateProgram creates a RandomX program from AesGenerator4R output.
+func (vm *virtualMachine) generateProgram() *program {
+	p := &program{}
+
+	// Step 1: Read and parse configuration data (128 bytes)
+	configData := make([]byte, 128)
+	vm.gen4.getBytes(configData)
+	vm.parseConfiguration(configData)
+
+	// Step 2: Read program data (2048 bytes = 256 instructions × 8 bytes)
+	programData := make([]byte, 2048)
+	vm.gen4.getBytes(programData)
+
+	// Step 3: Decode instructions
+	for i := 0; i < programLength; i++ {
+		p.instructions[i] = decodeInstruction(programData[i*8 : i*8+8])
 	}
 
-	// Fill memory in blocks
-	aesEnc, err := internal.NewAESEncryptor(key[:16])
-	if err != nil {
-		return
+	return p
+}
+
+// executeIteration executes one iteration of the VM program loop.
+// This implements the 12-step process per RandomX spec Section 4.6.2.
+func (vm *virtualMachine) executeIteration(prog *program) {
+	// Step 1: Update scratchpad addresses with register values
+	vm.spAddr0 ^= uint32(vm.reg[vm.config.readReg0])
+	vm.spAddr1 ^= uint32(vm.reg[vm.config.readReg1])
+
+	// Align to 64-byte cache lines
+	vm.spAddr0 &= 0x1FFFC0 // Mask to align to 64-byte boundary in scratchpad
+	vm.spAddr1 &= 0x1FFFC0
+
+	// Step 2: Read 64 bytes from Scratchpad[spAddr0] and XOR with r0-r7
+	for i := 0; i < 8; i++ {
+		vm.reg[i] ^= vm.readMemory(vm.spAddr0 + uint32(i*8))
 	}
 
-	block := make([]byte, 16)
-	for i := 0; i < scratchpadL3Size; i += 16 {
-		binary.LittleEndian.PutUint64(block[0:8], uint64(i))
-		binary.LittleEndian.PutUint64(block[8:16], uint64(i+8))
-		aesEnc.Encrypt(vm.mem[i:i+16], block)
+	// Step 3: Read 64 bytes from Scratchpad[spAddr1] to initialize f0-f3 and e0-e3
+	for i := 0; i < 4; i++ {
+		// Load f registers (first 32 bytes)
+		fVal := vm.readMemory(vm.spAddr1 + uint32(i*8))
+		vm.regF[i] = uint64ToFloat(fVal)
+
+		// Load e registers (next 32 bytes)
+		eVal := vm.readMemory(vm.spAddr1 + 32 + uint32(i*8))
+		vm.regE[i] = uint64ToFloat(eVal)
 	}
+
+	// Step 4: Execute all 256 instructions in the program
+	for i := 0; i < programLength; i++ {
+		vm.executeInstruction(&prog.instructions[i])
+	}
+
+	// Step 5: XOR mx with readReg2 and readReg3
+	vm.mx ^= vm.reg[vm.config.readReg2]
+	vm.mx ^= vm.reg[vm.config.readReg3]
+
+	// Step 6-7: Read dataset item and XOR with registers
+	vm.mixDataset()
+
+	// Step 8: Swap mx and ma
+	vm.mx, vm.ma = vm.ma, vm.mx
+
+	// Step 9: Write r0-r7 to Scratchpad[spAddr1]
+	for i := 0; i < 8; i++ {
+		vm.writeMemory(vm.spAddr1+uint32(i*8), vm.reg[i])
+	}
+
+	// Step 10: XOR f0-f3 with e0-e3
+	for i := 0; i < 4; i++ {
+		vm.regF[i] += vm.regE[i]
+	}
+
+	// Step 11: Write f0-f3 to Scratchpad[spAddr0]
+	for i := 0; i < 4; i++ {
+		vm.writeMemory(vm.spAddr0+uint32(i*8), floatToUint64(vm.regF[i]))
+	}
+
+	// Step 12: Update spAddr0 (this happens automatically on next iteration)
+}
+
+// serializeRegisters serializes the register file for hashing.
+// This is used to update the generator state between programs.
+func (vm *virtualMachine) serializeRegisters() []byte {
+	// Serialize: r0-r7 (64 bytes) + f0-f3 (32 bytes) + e0-e3 (32 bytes) = 128 bytes
+	data := make([]byte, 128)
+
+	// Integer registers
+	for i := 0; i < 8; i++ {
+		binary.LittleEndian.PutUint64(data[i*8:], vm.reg[i])
+	}
+
+	// Floating-point registers
+	for i := 0; i < 4; i++ {
+		binary.LittleEndian.PutUint64(data[64+i*8:], floatToUint64(vm.regF[i]))
+	}
+
+	// E registers
+	for i := 0; i < 4; i++ {
+		binary.LittleEndian.PutUint64(data[96+i*8:], floatToUint64(vm.regE[i]))
+	}
+
+	return data
 }
 
 // mixDataset mixes dataset items into the register file.
 func (vm *virtualMachine) mixDataset() {
-	// Get dataset/cache item based on register state
+	// Use mx to select dataset item
 	var itemData []byte
 
 	if vm.ds != nil {
 		// Fast mode: read from dataset
-		index := vm.reg[0] % datasetItems
+		index := vm.mx % datasetItems
 		itemData = vm.ds.getItem(index)
 	} else if vm.c != nil {
 		// Light mode: compute item from cache
-		index := uint32(vm.reg[0] % cacheItems)
+		index := uint32(vm.mx % cacheItems)
 		itemData = vm.c.getItem(index)
 	} else {
 		return
 	}
 
-	// XOR dataset item into registers
+	// XOR dataset item (64 bytes) into registers r0-r7
 	for i := 0; i < 8 && i*8 < len(itemData); i++ {
 		val := binary.LittleEndian.Uint64(itemData[i*8 : i*8+8])
 		vm.reg[i] ^= val
 	}
+
+	// Update ma for next iteration
+	vm.ma = vm.mx
 }
 
-// finalize produces the final hash output.
+// finalize produces the final hash output using the RandomX finalization algorithm.
 func (vm *virtualMachine) finalize() [32]byte {
-	// Mix final register state
+	// Step 1: Hash the scratchpad with AesHash1R
+	hasher, err := newAesHash1R()
+	if err != nil {
+		panic("failed to create AesHash1R: " + err.Error())
+	}
+	scratchpadHash := hasher.hash(vm.mem)
+
+	// Step 2: Serialize register file (256 bytes)
+	// Include integer registers, floating-point registers, and E registers
+	regData := make([]byte, 256)
+
+	// Integer registers (r0-r7): 64 bytes
 	for i := 0; i < 8; i++ {
-		vm.reg[i] ^= vm.readMemory(uint32(i * 8))
+		binary.LittleEndian.PutUint64(regData[i*8:], vm.reg[i])
 	}
 
-	// Hash register file to produce output
-	output := make([]byte, 64)
-	for i := 0; i < 8; i++ {
-		binary.LittleEndian.PutUint64(output[i*8:i*8+8], vm.reg[i])
+	// Floating-point registers (f0-f3): 32 bytes
+	for i := 0; i < 4; i++ {
+		binary.LittleEndian.PutUint64(regData[64+i*8:], floatToUint64(vm.regF[i]))
 	}
 
-	return internal.Blake2b256(output)
+	// E registers (e0-e3): 32 bytes
+	for i := 0; i < 4; i++ {
+		binary.LittleEndian.PutUint64(regData[96+i*8:], floatToUint64(vm.regE[i]))
+	}
+
+	// Add ma and mx: 16 bytes
+	binary.LittleEndian.PutUint64(regData[128:], vm.ma)
+	binary.LittleEndian.PutUint64(regData[136:], vm.mx)
+
+	// Pad remaining bytes to 256
+	// (rest is left as zeros)
+
+	// Step 3: Concatenate scratchpad hash (64 bytes) + register file (256 bytes)
+	combined := make([]byte, 320)
+	copy(combined[0:64], scratchpadHash[:])
+	copy(combined[64:], regData)
+
+	// Step 4: Final Blake2b-256 hash
+	return internal.Blake2b256(combined)
 }
 
 // executeInstruction executes a single VM instruction.
