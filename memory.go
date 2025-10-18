@@ -13,6 +13,11 @@ const (
 	scratchpadL1Size = 16384   // 16 KB
 	scratchpadL2Size = 262144  // 256 KB
 	scratchpadL3Size = 2097152 // 2 MB
+
+	// Scratchpad level masks (aligned to 8 bytes)
+	scratchpadL1Mask = (scratchpadL1Size - 1) &^ 7  // 0x3FF8
+	scratchpadL2Mask = (scratchpadL2Size - 1) &^ 7  // 0x3FFF8
+	scratchpadL3Mask = (scratchpadL3Size - 1) &^ 7  // 0x1FFFF8
 )
 
 // Global pools for memory reuse to minimize allocations

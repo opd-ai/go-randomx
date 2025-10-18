@@ -180,13 +180,15 @@ func (vm *virtualMachine) executeIteration(prog *program) {
 
 	// Step 3: Read 64 bytes from Scratchpad[spAddr1] to initialize f0-f3 and e0-e3
 	for i := 0; i < 4; i++ {
-		// Load f registers (first 32 bytes)
+		// Load f registers (first 32 bytes) - apply float mask
 		fVal := vm.readMemory(vm.spAddr1 + uint32(i*8))
-		vm.regF[i] = uint64ToFloat(fVal)
+		vm.regF[i] = maskFloat(math.Float64frombits(fVal))
 
-		// Load e registers (next 32 bytes)
+		// Load e registers (next 32 bytes) - apply eMask from configuration
 		eVal := vm.readMemory(vm.spAddr1 + 32 + uint32(i*8))
-		vm.regE[i] = uint64ToFloat(eVal)
+		// Apply eMask to limit exponent range
+		eValMasked := eVal & vm.config.eMask[i]
+		vm.regE[i] = maskFloat(math.Float64frombits(eValMasked))
 	}
 
 	// Step 4: Execute all 256 instructions in the program
@@ -317,55 +319,36 @@ func (vm *virtualMachine) finalize() [32]byte {
 	return internal.Blake2b256(combined)
 }
 
-// executeInstruction executes a single VM instruction.
+// executeInstruction executes a single VM instruction using the full RandomX instruction set.
 func (vm *virtualMachine) executeInstruction(instr *instruction) {
-	// Decode destination and source registers
-	dst := instr.dst & 0x07
-	src := instr.src & 0x07
-
-	// Execute based on opcode
-	switch instr.opcode % 16 {
-	case 0: // ADD
-		vm.reg[dst] += vm.reg[src]
-	case 1: // SUB
-		vm.reg[dst] -= vm.reg[src]
-	case 2: // MUL
-		vm.reg[dst] *= vm.reg[src]
-	case 3: // XOR
-		vm.reg[dst] ^= vm.reg[src]
-	case 4: // ROR (rotate right)
-		vm.reg[dst] = rotateRight64(vm.reg[dst], uint(vm.reg[src]&63))
-	case 5: // LOAD
-		addr := vm.getMemoryAddress(instr)
-		vm.reg[dst] = vm.readMemory(addr)
-	case 6: // STORE
-		addr := vm.getMemoryAddress(instr)
-		vm.writeMemory(addr, vm.reg[src])
-	case 7: // ADD immediate
-		vm.reg[dst] += uint64(instr.imm)
-	case 8: // SUB immediate
-		vm.reg[dst] -= uint64(instr.imm)
-	case 9: // MUL immediate
-		vm.reg[dst] *= uint64(instr.imm)
-	case 10: // XOR immediate
-		vm.reg[dst] ^= uint64(instr.imm)
-	case 11: // ROR immediate
-		vm.reg[dst] = rotateRight64(vm.reg[dst], uint(instr.imm&63))
-	case 12: // AND
-		vm.reg[dst] &= vm.reg[src]
-	case 13: // OR
-		vm.reg[dst] |= vm.reg[src]
-	case 14: // FPADD (floating point add)
-		vm.reg[dst] = floatToUint64(uint64ToFloat(vm.reg[dst]) + uint64ToFloat(vm.reg[src]))
-	case 15: // FPMUL (floating point multiply)
-		vm.reg[dst] = floatToUint64(uint64ToFloat(vm.reg[dst]) * uint64ToFloat(vm.reg[src]))
-	}
+	// Use the full instruction executor from instructions.go
+	vm.executeInstructionFull(instr)
 }
 
 // getMemoryAddress computes memory address for load/store operations.
+// The mod field determines which scratchpad level (L1/L2/L3) is accessed.
 func (vm *virtualMachine) getMemoryAddress(instr *instruction) uint32 {
+	// Calculate base address from src register + immediate
 	addr := vm.reg[instr.src] + uint64(instr.imm)
-	return uint32(addr % scratchpadL3Size)
+	
+	// Determine scratchpad level based on mod % 4
+	// mod % 4 == 0: L3 (full 2 MB)
+	// mod % 4 == 1: L2 (256 KB)
+	// mod % 4 == 2: L1 (16 KB)
+	// mod % 4 == 3: L2 (256 KB)
+	switch instr.mod % 4 {
+	case 0:
+		// L3 level - full scratchpad
+		return uint32(addr & scratchpadL3Mask)
+	case 1, 3:
+		// L2 level - 256 KB
+		return uint32(addr & scratchpadL2Mask)
+	case 2:
+		// L1 level - 16 KB
+		return uint32(addr & scratchpadL1Mask)
+	default:
+		return uint32(addr & scratchpadL3Mask)
+	}
 }
 
 // readMemory reads a 64-bit value from scratchpad memory.
