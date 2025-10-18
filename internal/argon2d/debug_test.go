@@ -219,7 +219,7 @@ func TestIndexAlpha_Debug(t *testing.T) {
 		Pass:  0,
 		Lane:  0,
 		Slice: 0,
-		Index: 0, // Processing block 2 (index 0 in segment, after skipping 0-1)
+		Index: 2, // Processing block 2 (first block after pre-initialized blocks 0-1)
 	}
 
 	pseudoRand := uint64(123456789)
@@ -232,8 +232,9 @@ func TestIndexAlpha_Debug(t *testing.T) {
 	fmt.Printf("segmentLength: %d\n", segmentLength)
 	fmt.Printf("laneLength: %d\n", laneLength)
 
-	// refIndex should be in range [0, 2) for first segment, first pass
+	// refIndex should be in range [0, 2) for block 2 in first segment, first pass
+	// (can only reference pre-initialized blocks 0 and 1)
 	if refIndex >= 2 {
-		t.Errorf("refIndex %d should be < 2 for first block", refIndex)
+		t.Errorf("refIndex %d should be < 2 for block 2 (can only reference blocks 0-1)", refIndex)
 	}
 }
