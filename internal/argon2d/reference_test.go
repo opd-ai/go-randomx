@@ -9,6 +9,8 @@ import (
 // TestArgon2dCache_RandomXReference tests against known RandomX cache output.
 // The RandomX reference implementation generates cache with "test key 000".
 // The first uint64 at cache[0] should be 0x191e0e1d23c02186.
+//
+// Note: RandomX cache is the entire 256 MB Argon2 memory, not a finalized hash.
 func TestArgon2dCache_RandomXReference(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping Argon2d cache test in short mode")
@@ -18,8 +20,10 @@ func TestArgon2dCache_RandomXReference(t *testing.T) {
 
 	cache := Argon2dCache(key)
 
-	if len(cache) != 262144 {
-		t.Fatalf("Cache size = %d, expected 262144", len(cache))
+	// RandomX cache is 256 MB (262144 blocks * 1024 bytes = 268435456 bytes)
+	expectedSize := 262144 * 1024
+	if len(cache) != expectedSize {
+		t.Fatalf("Cache size = %d, expected %d", len(cache), expectedSize)
 	}
 
 	// Check first uint64

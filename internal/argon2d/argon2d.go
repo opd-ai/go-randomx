@@ -222,25 +222,47 @@ func Argon2d(password, salt []byte, timeCost, memorySizeKB, lanes, tagLength uin
 // This is a convenience wrapper for RandomX-specific parameters.
 //
 // RandomX uses:
-//   - Memory: 256 MB (262144 KB)
+//   - Memory: 256 MB (262144 KB = 262144 blocks of 1024 bytes)
 //   - Time cost: 3 passes
 //   - Lanes: 1 (single-threaded)
-//   - Tag length: 256 KB output (to be interpreted as blocks)
 //
-// The output is 256 KB of data representing the RandomX cache.
+// IMPORTANT: RandomX uses the ENTIRE 256 MB memory as the cache output,
+// not a finalized hash. The cache is the raw memory blocks after Argon2d
+// completes its passes. This is different from standard Argon2 which
+// produces a small hash output by XORing and hashing all blocks.
 //
 // RandomX uses "RandomX\x03" as the salt per the specification and
 // confirmed by the reference C++ implementation.
 func Argon2dCache(key []byte) []byte {
 	const (
-		memorySizeKB = 262144 // 256 MB
+		memorySizeKB = 262144 // 256 MB of memory blocks
 		timeCost     = 3      // 3 passes
 		lanes        = 1      // Single-threaded
-		cacheSize    = 262144 // 256 KB cache output
 	)
 
 	// RandomX uses "RandomX\x03" as the salt (confirmed by reference implementation)
 	salt := []byte("RandomX\x03")
 
-	return Argon2d(key, salt, timeCost, memorySizeKB, lanes, cacheSize)
+	// Step 1: Compute H0
+	// Note: tagLength is 0 for RandomX (no hash output, only memory blocks)
+	h0 := initialHash(lanes, 0, memorySizeKB, timeCost, key, salt, nil, nil)
+
+	// Step 2: Allocate memory (256 MB = 262144 blocks)
+	numBlocks := memorySizeKB
+	memory := make([]Block, numBlocks)
+
+	// Step 3: Initialize first two blocks of each lane from H0
+	initializeMemory(memory, lanes, h0)
+
+	// Step 4: Fill memory using data-dependent addressing
+	fillMemory(memory, timeCost, lanes)
+
+	// Step 5: Return the entire memory as bytes (256 MB)
+	// This is the RandomX cache - no finalization step!
+	result := make([]byte, numBlocks*BlockSize)
+	for i := 0; i < int(numBlocks); i++ {
+		copy(result[i*BlockSize:(i+1)*BlockSize], memory[i].ToBytes())
+	}
+
+	return result
 }
