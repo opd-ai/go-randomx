@@ -229,9 +229,8 @@ func Argon2d(password, salt []byte, timeCost, memorySizeKB, lanes, tagLength uin
 //
 // The output is 256 KB of data representing the RandomX cache.
 //
-// RandomX uses the key as both password AND salt (not a separate fixed salt).
-// This is documented in the RandomX specification and confirmed by the reference
-// C++ implementation.
+// RandomX uses "RandomX\x03" as the salt per the specification and
+// confirmed by the reference C++ implementation.
 func Argon2dCache(key []byte) []byte {
 	const (
 		memorySizeKB = 262144 // 256 MB
@@ -240,7 +239,8 @@ func Argon2dCache(key []byte) []byte {
 		cacheSize    = 262144 // 256 KB cache output
 	)
 
-	// RandomX uses the key as both password and salt
-	// This matches the RandomX C++ reference implementation
-	return Argon2d(key, key, timeCost, memorySizeKB, lanes, cacheSize)
+	// RandomX uses "RandomX\x03" as the salt (confirmed by reference implementation)
+	salt := []byte("RandomX\x03")
+
+	return Argon2d(key, salt, timeCost, memorySizeKB, lanes, cacheSize)
 }
