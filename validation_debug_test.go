@@ -8,9 +8,9 @@ import (
 	"github.com/opd-ai/go-randomx/internal"
 )
 
-// TestComponentValidation validates each component of RandomX independently
+// TestComponentValidationDetailed validates each component of RandomX independently
 // to identify where the hash mismatch originates.
-func TestComponentValidation(t *testing.T) {
+func TestComponentValidationDetailed(t *testing.T) {
 	key := []byte("test key 000")
 	input := []byte("This is a test")
 
