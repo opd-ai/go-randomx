@@ -1,0 +1,48 @@
+{
+  "test_name": "basic_test_1",
+  "key": "test key 000",
+  "input": "This is a test",
+  "initial_blake2b": "152455751b73ac2167dd07ed8adeb4f40a1875bce1d64ca9bc5048f94a70d23ff7d26b86498c645a4c3d75c74aef7bbbaabfad29298ddc0da6d65f9ce8043577",
+  "initial_regs": [
+    "0x21ac731b75552415",
+    "0xf4b4de8aed07dd67",
+    "0xa94cd6e1bc75180a",
+    "0x3fd2704af94850bc",
+    "0x5a648c49866bd2f7",
+    "0xbb7bef4ac7753d4c",
+    "0x0ddc8d2929adbfaa",
+    "0x773504e89c5fd6a6"
+  ],
+  "final_regs": [
+    "0xTODO_FROM_CPP_REFERENCE",
+    "0xTODO_FROM_CPP_REFERENCE",
+    "0xTODO_FROM_CPP_REFERENCE",
+    "0xTODO_FROM_CPP_REFERENCE",
+    "0xTODO_FROM_CPP_REFERENCE",
+    "0xTODO_FROM_CPP_REFERENCE",
+    "0xTODO_FROM_CPP_REFERENCE",
+    "0xTODO_FROM_CPP_REFERENCE"
+  ],
+  "final_hash": "639183aae1bf4c9a35884cb46b09cad9175f04efd7684e7262a0ac1c2f0b4e3f",
+  "programs": [
+    {
+      "program_num": 0,
+      "first_instr": [
+        "TODO: Extract from C++ reference",
+        "Format: opcode dst src imm",
+        "Example: IADD_RS r3 r5 0x12345678"
+      ],
+      "registers_after": [
+        "0xTODO",
+        "0xTODO",
+        "0xTODO",
+        "0xTODO",
+        "0xTODO",
+        "0xTODO",
+        "0xTODO",
+        "0xTODO"
+      ]
+    }
+  ],
+  "_comment": "This is a template. To populate with real values, modify the C++ RandomX reference implementation to output intermediate values, or use a debugger to extract them. See NEXT_DEVELOPMENT_PHASE.md for detailed instructions."
+}
