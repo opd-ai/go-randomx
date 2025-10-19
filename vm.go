@@ -2,6 +2,7 @@ package randomx
 
 import (
 	"encoding/binary"
+	"fmt"
 	"math"
 
 	"github.com/opd-ai/go-randomx/internal"
@@ -65,6 +66,9 @@ func (vm *virtualMachine) reset() {
 
 // run executes the RandomX algorithm on the input.
 func (vm *virtualMachine) run(input []byte) [32]byte {
+	traceSeparator("RandomX Hash Computation")
+	traceLog("Input: %q (length=%d bytes)", string(input), len(input))
+	
 	// Initialize VM state from input
 	vm.initialize(input)
 
@@ -75,13 +79,28 @@ func (vm *virtualMachine) run(input []byte) [32]byte {
 	)
 
 	for progNum := 0; progNum < programCount; progNum++ {
+		traceSubsection(fmt.Sprintf("Program %d/%d", progNum+1, programCount))
+		
 		// Generate new program from AesGenerator4R
 		prog := vm.generateProgram()
+		
+		// Log first few instructions for debugging
+		if debugEnabled && len(prog.instructions) >= 5 {
+			traceLog("First 5 instructions:")
+			for i := 0; i < 5; i++ {
+				instr := &prog.instructions[i]
+				traceLog("  [%03d] opcode=0x%02x dst=r%d src=r%d mod=0x%02x imm=0x%08x",
+					i, instr.opcode, instr.dst, instr.src, instr.mod, instr.imm)
+			}
+		}
 
 		// Execute this program 2048 times
 		for iter := 0; iter < programIterations; iter++ {
 			vm.executeIteration(prog)
 		}
+
+		// Log register state after program execution
+		traceRegisters(fmt.Sprintf("Registers after program %d", progNum+1), vm.reg)
 
 		// Update generator state for next program
 		// Hash the register file and use as new generator state
@@ -91,13 +110,20 @@ func (vm *virtualMachine) run(input []byte) [32]byte {
 	}
 
 	// Finalize hash
-	return vm.finalize()
+	finalHash := vm.finalize()
+	traceBytes("Final hash", finalHash[:])
+	traceSeparator("End of Hash Computation")
+	
+	return finalHash
 }
 
 // initialize sets up the VM state from input data using the RandomX algorithm.
 func (vm *virtualMachine) initialize(input []byte) {
+	traceSubsection("VM Initialization")
+	
 	// Step 1: Hash input to get initial state
 	hash := internal.Blake2b512(input)
+	traceBytes("Initial Blake2b-512 hash", hash[:])
 
 	// Step 2: Create AesGenerator1R from hash
 	gen1, err := newAesGenerator1R(hash[:])
@@ -111,6 +137,11 @@ func (vm *virtualMachine) initialize(input []byte) {
 		vm.mem = make([]byte, scratchpadL3Size)
 	}
 	gen1.getBytes(vm.mem)
+	
+	// Log first 64 bytes of scratchpad for debugging
+	if debugEnabled && len(vm.mem) >= 64 {
+		traceBytes("Scratchpad first 64 bytes", vm.mem[:64])
+	}
 
 	// Step 4: Create AesGenerator4R from gen1 state for program generation
 	gen4, err := newAesGenerator4R(gen1.state[:])
@@ -118,6 +149,8 @@ func (vm *virtualMachine) initialize(input []byte) {
 		panic("failed to create AesGenerator4R: " + err.Error())
 	}
 	vm.gen4 = gen4
+	
+	traceLog("VM initialization complete")
 }
 
 // parseConfiguration parses 128 bytes of configuration data from AesGenerator4R.
