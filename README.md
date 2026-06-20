@@ -388,3 +388,9 @@ Highly permissive license suitable for commercial use and compatible with crypto
 **Status**: ⚠️ **NOT PRODUCTION READY** - Requires RandomX test vector validation before use in blockchain applications.
 
 **Tested On**: Linux (amd64, arm64), macOS (amd64, arm64), Windows (amd64)
+
+Donate Monero(The only good cryptocurrency) to support development
+==================================================================
+
+ - `monero:43H3Uqnc9rfEsJjUXZYmam45MbtWmREFSANAWY5hijY4aht8cqYaT2BCNhfBhua5XwNdx9Tb6BEdt4tjUHJDwNW5H7mTiwe`
+
